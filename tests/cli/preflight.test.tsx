@@ -37,4 +37,22 @@ describe('PreflightView', () => {
     expect(out).toMatch(/✗\s*Remote preflight/);
     expect(out).toContain('socat not installed');
   });
+
+  test('warning is shown alongside an ok step', () => {
+    const { lastFrame } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight',
+            state: 'ok',
+            warning: 'cannot verify sshd StreamLocalBindUnlink',
+          },
+        ]}
+      />,
+    );
+    const out = lastFrame()!;
+    expect(out).toMatch(/✓\s*Remote preflight/);
+    expect(out).toContain('cannot verify sshd StreamLocalBindUnlink');
+  });
 });

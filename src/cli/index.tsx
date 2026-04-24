@@ -106,13 +106,18 @@ async function runPreflightWithUi(
   // Step 2: Remote preflight
   setStep('remote', { state: 'running' });
   const r = await runPreflight(host.name);
+  const warning = r.warnings.length > 0 ? r.warnings.join(' ') : undefined;
   if (!r.ok) {
-    setStep('remote', { state: 'error', error: r.errors.join('; ') });
+    setStep('remote', { state: 'error', error: r.errors.join('; '), warning });
     await new Promise((x) => setTimeout(x, 300));
     unmountApp();
     return { ok: false };
   }
-  setStep('remote', { state: 'ok' });
+  setStep('remote', { state: 'ok', warning });
+  if (warning) {
+    // give user a visible beat to read the warning before moving on
+    await new Promise((x) => setTimeout(x, 1500));
+  }
 
   // Step 3: Chrome (last — has user-visible side effects)
   setStep('chrome', { state: 'running' });

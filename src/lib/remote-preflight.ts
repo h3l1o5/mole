@@ -8,6 +8,7 @@ export interface PreflightOptions {
 export interface PreflightResult {
   ok: boolean;
   errors: string[];
+  warnings: string[];
   socatPid?: number;
 }
 
@@ -16,6 +17,17 @@ export function buildPreflightScript(opts: PreflightOptions = {}): string {
   const port = opts.chromePort ?? 9222;
   return `
 set -eu
+MOLE_SLBU_READ=""
+for f in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do
+  [ -r "$f" ] || continue
+  MOLE_SLBU_READ="$MOLE_SLBU_READ $f"
+done
+if [ -z "$MOLE_SLBU_READ" ]; then
+  echo "MOLE_WARN: cannot read /etc/ssh/sshd_config*; unable to verify 'StreamLocalBindUnlink yes'. If clipboard silently fails, check 'ls -la /tmp/mole-*.sock' on remote and ensure sshd_config has 'StreamLocalBindUnlink yes'." >&2
+elif ! grep -hEi '^[[:space:]]*StreamLocalBindUnlink[[:space:]]+yes[[:space:]]*$' $MOLE_SLBU_READ >/dev/null 2>&1; then
+  echo "ERROR: remote sshd missing 'StreamLocalBindUnlink yes'; a stale -R socket from another client will silently block mole's clipboard. Fix: echo 'StreamLocalBindUnlink yes' | sudo tee -a /etc/ssh/sshd_config && sudo systemctl reload ssh.service" >&2
+  exit 3
+fi
 if ! command -v socat >/dev/null 2>&1; then
   echo "ERROR: socat not installed on remote" >&2
   exit 1
@@ -44,14 +56,19 @@ export async function runPreflightWith(
 ): Promise<PreflightResult> {
   const script = buildPreflightScript(opts);
   const { stdout, stderr, code } = await runner(host, script);
+  const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean);
+  const warnings = lines
+    .filter((l) => l.startsWith('MOLE_WARN:'))
+    .map((l) => l.replace(/^MOLE_WARN:\s*/, ''));
+  const errors = lines.filter((l) => !l.startsWith('MOLE_WARN:'));
   if (code !== 0) {
-    const errors = stderr.split('\n').map((l) => l.trim()).filter(Boolean);
-    return { ok: false, errors };
+    return { ok: false, errors, warnings };
   }
   const pid = parseInt(stdout.trim(), 10);
   return {
     ok: true,
     errors: [],
+    warnings,
     socatPid: Number.isFinite(pid) ? pid : undefined,
   };
 }

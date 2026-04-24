@@ -8,6 +8,7 @@ export interface PreflightStep {
   label: string;
   state: PreflightStepState;
   error?: string;
+  warning?: string;
 }
 
 const marker = (s: PreflightStepState): string => {
@@ -48,6 +49,7 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
           {marker(s.state)} {s.label}
         </Text>
         {s.error ? <Text color="red">    {s.error}</Text> : null}
+        {s.warning ? <Text color="yellow">    ⚠ {s.warning}</Text> : null}
       </Box>
     ))}
   </Box>
