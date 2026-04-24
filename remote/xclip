@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# mole fake xclip — intercepts clipboard image reads and serves from mole daemon
+set -uo pipefail
+
+SOCK="${MOLE_SOCKET:-/tmp/mole-clip.sock}"
+REAL_XCLIP="${MOLE_REAL_XCLIP:-/usr/bin/xclip}"
+FETCH_TIMEOUT="${MOLE_FETCH_TIMEOUT:-5}"
+
+log() {
+  [ "${MOLE_DEBUG:-}" = "1" ] && echo "mole-xclip: $*" >&2
+}
+
+fallback() {
+  log "falling back to $REAL_XCLIP $*"
+  exec "$REAL_XCLIP" "$@"
+}
+
+has_socket() {
+  [ -S "$SOCK" ]
+}
+
+fetch_type() {
+  curl -sf --max-time "$FETCH_TIMEOUT" --unix-socket "$SOCK" http://x/type
+}
+
+fetch_image() {
+  curl -sf --max-time "$FETCH_TIMEOUT" --unix-socket "$SOCK" http://x/image
+}
+
+args="$*"
+
+case "$args" in
+  *"-selection clipboard"*"-t TARGETS"*"-o"*)
+    log "intercepting TARGETS query"
+    if ! has_socket; then fallback "$@"; fi
+    resp="$(fetch_type 2>/dev/null)" || fallback "$@"
+    if echo "$resp" | grep -q '"type":"image"'; then
+      echo "image/png"
+      exit 0
+    fi
+    fallback "$@"
+    ;;
+  *"-selection clipboard"*"-t image/png"*"-o"*)
+    log "intercepting image/png fetch"
+    if ! has_socket; then fallback "$@"; fi
+    tmp="$(mktemp)" || fallback "$@"
+    if curl -sf --max-time "$FETCH_TIMEOUT" --unix-socket "$SOCK" http://x/image -o "$tmp"; then
+      if [ -s "$tmp" ]; then
+        cat "$tmp"
+        rm -f "$tmp"
+        exit 0
+      fi
+    fi
+    rm -f "$tmp"
+    fallback "$@"
+    ;;
+  *)
+    fallback "$@"
+    ;;
+esac
