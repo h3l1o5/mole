@@ -45,6 +45,33 @@ on error
 end try
 `;
 
+export function createCachedReader(
+  reader: () => Promise<ClipboardResult>,
+  ttlMs: number,
+  now: () => number = Date.now,
+): () => Promise<ClipboardResult> {
+  let cached: ClipboardResult | null = null;
+  let cachedAt = 0;
+  let inFlight: Promise<ClipboardResult> | null = null;
+
+  return async () => {
+    const t = now();
+    if (cached !== null && t - cachedAt < ttlMs) return cached;
+    if (inFlight !== null) return inFlight;
+    inFlight = (async () => {
+      try {
+        const result = await reader();
+        cached = result;
+        cachedAt = now();
+        return result;
+      } finally {
+        inFlight = null;
+      }
+    })();
+    return inFlight;
+  };
+}
+
 export async function readClipboard(): Promise<ClipboardResult> {
   return readClipboardWith(async () => {
     const proc = Bun.spawn(['osascript', '-e', READ_CLIPBOARD_PNG_SCRIPT], {
