@@ -12,6 +12,12 @@ describe('buildNonInteractiveSshArgs', () => {
     expect(args).toContain('StrictHostKeyChecking=accept-new');
   });
 
+  test('disables ssh multiplexing so we always get a fresh session', () => {
+    const args = buildNonInteractiveSshArgs('myhost', ['bash', '-s']);
+    expect(args).toContain('ControlMaster=no');
+    expect(args).toContain('ControlPath=none');
+  });
+
   test('host comes before the remote command', () => {
     const args = buildNonInteractiveSshArgs('myhost', ['bash', '-s']);
     const hostIdx = args.indexOf('myhost');

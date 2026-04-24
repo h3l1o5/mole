@@ -7,6 +7,10 @@ export function buildNonInteractiveSshArgs(
     'BatchMode=yes',
     '-o',
     'StrictHostKeyChecking=accept-new',
+    '-o',
+    'ControlMaster=no',
+    '-o',
+    'ControlPath=none',
     host,
     ...command,
   ];

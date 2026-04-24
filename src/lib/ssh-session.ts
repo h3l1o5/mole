@@ -15,6 +15,8 @@ export function buildSshArgs(opts: SshOptions): string[] {
     '-t', '-t',
     '-o', 'StreamLocalBindUnlink=yes',
     '-o', 'ExitOnForwardFailure=no',
+    '-o', 'ControlMaster=no',
+    '-o', 'ControlPath=none',
     '-R', `${clip}:${clip}`,
     '-R', `${chrome}:127.0.0.1:${port}`,
     opts.host,
