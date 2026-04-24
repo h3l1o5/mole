@@ -23,12 +23,14 @@ function firstEnabledIndex<T>(items: SelectItem<T>[]): number {
 export function SelectList<T>({ items, onSelect }: SelectListProps<T>) {
   const [index, setIndex] = useState(() => firstEnabledIndex(items));
 
-  useInput((_input, key) => {
-    if (key.upArrow) {
+  useInput((input, key) => {
+    const up = key.upArrow || (key.ctrl && input === 'p');
+    const down = key.downArrow || (key.ctrl && input === 'n');
+    if (up) {
       let i = index - 1;
       while (i >= 0 && items[i]?.disabled) i--;
       if (i >= 0) setIndex(i);
-    } else if (key.downArrow) {
+    } else if (down) {
       let i = index + 1;
       while (i < items.length && items[i]?.disabled) i++;
       if (i < items.length) setIndex(i);

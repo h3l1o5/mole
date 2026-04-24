@@ -64,6 +64,29 @@ describe('SelectList', () => {
     expect(out).toContain('dev.example.com');
   });
 
+  test('Ctrl+N moves selection down', async () => {
+    const { stdin, lastFrame } = render(
+      <SelectList items={items} onSelect={() => {}} />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    stdin.write('\x0e'); // Ctrl+N
+    await new Promise((r) => setTimeout(r, 10));
+    // Alpha -> (skip disabled Beta) -> Gamma
+    expect(lastFrame()!).toMatch(/›\s*Gamma/);
+  });
+
+  test('Ctrl+P moves selection up', async () => {
+    const { stdin, lastFrame } = render(
+      <SelectList items={items} onSelect={() => {}} />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    stdin.write('\x1b[B'); // down to skip disabled -> Gamma
+    await new Promise((r) => setTimeout(r, 10));
+    stdin.write('\x10'); // Ctrl+P
+    await new Promise((r) => setTimeout(r, 10));
+    expect(lastFrame()!).toMatch(/›\s*Alpha/);
+  });
+
   test('enter on disabled does nothing', async () => {
     const itemsAllDisabled = [
       { key: 'a', label: 'A', value: 'a', disabled: true },
