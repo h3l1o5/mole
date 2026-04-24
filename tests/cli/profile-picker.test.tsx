@@ -65,11 +65,4 @@ describe('ProfilePicker', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(box.value).toBe('work');
   });
-
-  test('shows empty message when no profiles', () => {
-    const { lastFrame } = render(
-      <ProfilePicker scanner={makeScanner([])} intervalMs={20} onSelect={() => {}} />,
-    );
-    expect(lastFrame()).toContain('No Chrome profiles');
-  });
 });

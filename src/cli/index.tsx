@@ -5,7 +5,7 @@ import { HostPicker } from './host-picker';
 import { ProfilePicker } from './profile-picker';
 import { PreflightView, type PreflightStep } from './preflight';
 import { loadSshHosts, type SshHost } from '../lib/ssh-config';
-import type { ProfileInfo } from '../lib/chrome-profile';
+import { scanProfiles, type ProfileInfo } from '../lib/chrome-profile';
 import { launchChrome } from '../lib/chrome-launcher';
 import { isDaemonHealthy } from '../lib/daemon-health';
 import { runPreflight } from '../lib/remote-preflight';
@@ -128,6 +128,15 @@ async function runPreflightWithUi(
 async function main() {
   const host = await pickHost();
   if (!host) process.exit(1);
+
+  const profiles = await scanProfiles();
+  if (profiles.length === 0) {
+    console.error(
+      'No Chrome profiles found in ~/.chrome-profiles/. Create a directory there, then re-run mole.',
+    );
+    process.exit(1);
+  }
+
   const profile = await pickProfile();
   if (!profile) process.exit(1);
 

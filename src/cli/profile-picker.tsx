@@ -31,15 +31,6 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
 }) => {
   const profiles = useProfiles(scanner, intervalMs);
 
-  if (profiles.length === 0) {
-    return (
-      <Box flexDirection="column">
-        <Text color="yellow">No Chrome profiles found in ~/.chrome-profiles/.</Text>
-        <Text dimColor>Create a directory there, then re-run mole.</Text>
-      </Box>
-    );
-  }
-
   const items = profiles.map((p) => ({
     key: p.name,
     label: `${p.name.padEnd(16)}  ${statusLabel(p.status)}`,
