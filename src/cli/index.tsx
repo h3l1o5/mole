@@ -162,10 +162,10 @@ async function main() {
     });
   });
 
-  // Watchdog: if another Mac takes over the -R tunnel, sshd unlinks our
-  // forwarded socket without notice. Periodically ask the remote end
-  // who it's currently tunneling to; two strikes → bail so the user
-  // isn't silently talking to another Mac's daemon.
+  // Watchdog: if another client takes over the -R tunnel, sshd unlinks
+  // our forwarded socket without notice. Periodically ask the remote
+  // end who it's currently tunneling to; two strikes → bail so the
+  // user isn't silently talking to another client's daemon.
   startHijackWatchdog({
     host: host.name,
     ourId,
@@ -174,7 +174,7 @@ async function main() {
       // return. Wrap with '\r\n' and colour the line so it stands apart
       // from ssh's own "Connection to ... closed." that follows.
       process.stderr.write(
-        '\r\n\x1b[33m[mole] another mac took over the -R tunnel; disconnecting.\x1b[0m\r\n',
+        '\r\n\x1b[33m[mole] another client took over the -R tunnel; disconnecting.\x1b[0m\r\n',
       );
       ssh.kill('SIGTERM');
     },
