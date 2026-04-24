@@ -5,6 +5,7 @@ import { ProfilePicker } from '../../src/cli/profile-picker';
 import type { ProfileInfo } from '../../src/lib/chrome-profile';
 
 const makeScanner = (profiles: ProfileInfo[]) => async () => profiles;
+const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 
 describe('ProfilePicker', () => {
   test('renders status labels', async () => {
@@ -16,7 +17,7 @@ describe('ProfilePicker', () => {
     const { lastFrame } = render(
       <ProfilePicker scanner={makeScanner(profiles)} intervalMs={20} onSelect={() => {}} />,
     );
-    await new Promise((r) => setTimeout(r, 30));
+    await settle();
     const out = lastFrame()!;
     expect(out).toContain('work');
     expect(out).toContain('free');
@@ -40,9 +41,9 @@ describe('ProfilePicker', () => {
         }}
       />,
     );
-    await new Promise((r) => setTimeout(r, 30));
+    await settle();
     stdin.write('\r');
-    await new Promise((r) => setTimeout(r, 10));
+    await settle(10);
     expect(box.value).toBe(null);
   });
 
@@ -60,9 +61,69 @@ describe('ProfilePicker', () => {
         }}
       />,
     );
-    await new Promise((r) => setTimeout(r, 30));
+    await settle();
     stdin.write('\r');
-    await new Promise((r) => setTimeout(r, 10));
+    await settle(10);
     expect(box.value).toBe('work');
+  });
+
+  test('shows "Create new profile" sentinel even when list is empty', async () => {
+    const { lastFrame } = render(
+      <ProfilePicker scanner={makeScanner([])} intervalMs={20} onSelect={() => {}} />,
+    );
+    await settle();
+    expect(lastFrame()).toContain('Create new profile');
+  });
+
+  test('selecting sentinel switches to name-input mode', async () => {
+    const { stdin, lastFrame } = render(
+      <ProfilePicker scanner={makeScanner([])} intervalMs={20} onSelect={() => {}} />,
+    );
+    await settle();
+    stdin.write('\r'); // only item is sentinel
+    await settle(10);
+    expect(lastFrame()).toContain('New profile name');
+  });
+
+  test('submitting valid name invokes creator then onSelect', async () => {
+    const picked = { profile: null as ProfileInfo | null };
+    const creatorCalls: string[] = [];
+    const fakeInfo: ProfileInfo = { name: 'alpha', path: '/p/alpha', status: 'free' };
+    const creator = (n: string) => {
+      creatorCalls.push(n);
+      return fakeInfo;
+    };
+    const { stdin } = render(
+      <ProfilePicker
+        scanner={makeScanner([])}
+        intervalMs={20}
+        creator={creator}
+        onSelect={(p) => {
+          picked.profile = p;
+        }}
+      />,
+    );
+    await settle();
+    stdin.write('\r'); // select sentinel
+    await settle(10);
+    for (const ch of 'alpha') stdin.write(ch);
+    stdin.write('\r');
+    await settle(10);
+    expect(creatorCalls).toEqual(['alpha']);
+    expect(picked.profile).toEqual(fakeInfo);
+  });
+
+  test('ESC from name-input returns to list', async () => {
+    const { stdin, lastFrame } = render(
+      <ProfilePicker scanner={makeScanner([])} intervalMs={20} onSelect={() => {}} />,
+    );
+    await settle();
+    stdin.write('\r'); // enter creating mode
+    await settle(50);
+    expect(lastFrame()).toContain('New profile name');
+    stdin.write('\x1b'); // ESC
+    await settle(50);
+    expect(lastFrame()).toContain('Create new profile');
+    expect(lastFrame()).not.toContain('New profile name');
   });
 });
