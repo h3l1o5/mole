@@ -65,6 +65,19 @@ No external dependencies beyond macOS built-ins (`osascript`, `open`,
 | Fallback | `/usr/bin/xclip`                               |
 | PATH     | `~/.local/bin` ahead of system directories     |
 
+Most distributions don't ship `socat` or `xclip` by default. Install both
+before running `remote/install.sh`:
+
+```bash
+sudo apt install socat xclip     # Debian/Ubuntu
+sudo dnf install socat xclip     # RHEL/Fedora
+sudo pacman -S socat xclip       # Arch
+```
+
+`remote/install.sh` auto-appends `export PATH="$HOME/.local/bin:$PATH"` to
+`~/.bashrc` if it's missing. Start a new SSH session (or
+`source ~/.bashrc`) after installing so the shim wins over `/usr/bin/xclip`.
+
 ## Install
 
 ### On your Mac

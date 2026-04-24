@@ -60,6 +60,18 @@ SSH session。
 | Fallback | `/usr/bin/xclip`                        |
 | PATH     | `~/.local/bin` 要在系統路徑之前         |
 
+多數發行版預設沒裝 `socat` 與 `xclip`,在跑 `remote/install.sh` 之前先裝:
+
+```bash
+sudo apt install socat xclip     # Debian/Ubuntu
+sudo dnf install socat xclip     # RHEL/Fedora
+sudo pacman -S socat xclip       # Arch
+```
+
+`remote/install.sh` 會自動把 `export PATH="$HOME/.local/bin:$PATH"` append
+到 `~/.bashrc`(若尚未存在)。裝完後開新的 SSH session(或 `source ~/.bashrc`),
+shim 才會排在 `/usr/bin/xclip` 之前。
+
 ## 安裝
 
 ### Mac 端
