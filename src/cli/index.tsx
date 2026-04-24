@@ -64,9 +64,9 @@ async function runPreflightWithUi(
 
   const Container: React.FC = () => {
     const [steps, setSteps] = useState<PreflightStep[]>([
-      { id: 'chrome', label: `Chrome (profile: ${profile.name})`, state: 'pending' },
       { id: 'daemon', label: 'Mac daemon', state: 'pending' },
       { id: 'remote', label: `Remote preflight (${host.name})`, state: 'pending' },
+      { id: 'chrome', label: `Chrome (profile: ${profile.name})`, state: 'pending' },
     ]);
     updateSteps = setSteps;
     return <PreflightView steps={steps} />;
@@ -81,18 +81,11 @@ async function runPreflightWithUi(
     );
   };
 
-  // Step 1: Chrome
-  setStep('chrome', { state: 'running' });
-  if (profile.status === 'reusable') {
-    setStep('chrome', { state: 'ok', label: `Chrome (reusing pid ${profile.pid})` });
-  } else {
-    launchChrome({ profilePath: profile.path });
-    // give Chrome a moment to open the debug port
-    await new Promise((r) => setTimeout(r, 1500));
-    setStep('chrome', { state: 'ok' });
-  }
+  // Order matters: reversible checks (daemon, remote) run before the
+  // Chrome launch, which has a user-visible side effect. If any check
+  // fails, we bail without spawning Chrome.
 
-  // Step 2: Daemon
+  // Step 1: Daemon
   setStep('daemon', { state: 'running' });
   const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';
   const healthy = await isDaemonHealthy(socketPath);
@@ -108,7 +101,7 @@ async function runPreflightWithUi(
   }
   setStep('daemon', { state: 'ok' });
 
-  // Step 3: Remote preflight
+  // Step 2: Remote preflight
   setStep('remote', { state: 'running' });
   const r = await runPreflight(host.name);
   if (!r.ok) {
@@ -118,6 +111,17 @@ async function runPreflightWithUi(
     return { ok: false };
   }
   setStep('remote', { state: 'ok' });
+
+  // Step 3: Chrome (last — has user-visible side effects)
+  setStep('chrome', { state: 'running' });
+  if (profile.status === 'reusable') {
+    setStep('chrome', { state: 'ok', label: `Chrome (reusing pid ${profile.pid})` });
+  } else {
+    launchChrome({ profilePath: profile.path });
+    // give Chrome a moment to open the debug port
+    await new Promise((x) => setTimeout(x, 1500));
+    setStep('chrome', { state: 'ok' });
+  }
 
   // small pause so user sees all green
   await new Promise((x) => setTimeout(x, 200));
