@@ -32,8 +32,10 @@ export async function readPidCmdline(pid: number): Promise<string | null> {
     stdout: 'pipe',
     stderr: 'ignore',
   });
-  const out = await new Response(proc.stdout).text();
-  const code = await proc.exited;
+  const [out, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    proc.exited,
+  ]);
   if (code !== 0) return null;
   const trimmed = out.trim();
   return trimmed.length > 0 ? trimmed : null;
