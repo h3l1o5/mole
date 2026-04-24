@@ -1,3 +1,3 @@
 [test]
-preload = []
+preload = [""]
 coverage = false
