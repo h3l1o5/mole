@@ -1,30 +1,71 @@
 # mole
 
-One-shot CLI that makes remote Claude Code feel local: paste screenshots over
-SSH, drive your local Chrome via DevTools — all through a single SSH session.
+> A zero-configuration bridge that makes a remote Linux shell feel local.
 
-- **Last-writer-wins across Macs**: jump between laptops, the most recent SSH
-  session wins the reverse tunnel automatically. No manual coordination.
-- **Zero config files edited**: all SSH flags are on the command line, your
-  `~/.ssh/config` stays clean.
-- **No agent plumbing**: Claude Code, Codex, or any tool calling `xclip` just
-  works.
+[繁體中文](./README.zh-TW.md)
+
+`mole` is a single-binary CLI that tunnels your Mac's clipboard and Chrome
+DevTools port into a Linux SSH session. Paste screenshots, drive a browser,
+and run Claude Code on a remote host as if it were local — all through one
+SSH connection.
+
+## Features
+
+- **Last-writer-wins across multiple Macs.** The most recent SSH session
+  wins the reverse tunnel automatically, via
+  `StreamLocalBindUnlink=yes`. Switch laptops without manual coordination.
+- **Zero SSH config edits.** All tunnelling flags live on the command line.
+  Your `~/.ssh/config` stays untouched.
+- **Transparent `xclip`.** A bash shim on the remote intercepts image
+  clipboard reads and passes everything else through to the real `xclip`.
+  Works with any tool that calls `xclip` — Claude Code, Neovim, tmux copy,
+  and so on.
+- **Local Chrome, remote automation.** Chrome runs on your Mac in debug
+  mode; remote tools connect to `localhost:9222` and drive it through a
+  socat bridge.
+
+## Architecture
+
+```
+ Mac (active) ── Chrome (debug) ─┐        ┌─ Claude Code ── xclip shim ─┐
+                                 │  SSH   │                              │ unix socket
+   mole-daemon ──────────────────┴────────┴─ socat (TCP 9222 → socket) ─┘
+   (clipboard)                                       Linux remote
+```
+
+Three data paths share one SSH connection:
+
+| Path         | Direction                                                  | Purpose            |
+| ------------ | ---------------------------------------------------------- | ------------------ |
+| Clipboard    | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `pngpaste` | read Mac clipboard |
+| Chrome CDP   | remote `localhost:9222` → `socat` → SSH tunnel → Mac `:9222` → Chrome  | control Mac Chrome |
+| Shell        | keyboard ↔ `ssh` (stdio inherit) ↔ remote shell            | normal SSH session |
+
+Full design: [`docs/2026-04-24-mole-design.md`](docs/2026-04-24-mole-design.md).
 
 ## Requirements
 
-**Mac (local):**
-- macOS 13+
-- [Bun](https://bun.sh) 1.x (for building from source)
-- `pngpaste` — `brew install pngpaste`
-- Google Chrome
+### Mac (local)
 
-**Linux (remote):**
-- OpenSSH ≥ 6.7 (for `StreamLocalBindUnlink`)
-- `bash`, `curl`, `socat`
-- `/usr/bin/xclip` (fallback)
-- `~/.local/bin` first in `PATH`
+| Item          | Minimum                        |
+| ------------- | ------------------------------ |
+| macOS         | 13 (Ventura)                   |
+| Bun           | 1.1                            |
+| `pngpaste`    | `brew install pngpaste`        |
+| Google Chrome | any recent version             |
+
+### Linux (remote)
+
+| Item     | Minimum                                        |
+| -------- | ---------------------------------------------- |
+| OpenSSH  | 6.7 (needs `StreamLocalBindUnlink`)            |
+| Shell    | `bash`, `curl`, `socat`                        |
+| Fallback | `/usr/bin/xclip`                               |
+| PATH     | `~/.local/bin` ahead of system directories     |
 
 ## Install
+
+### On your Mac
 
 ```bash
 git clone git@github.com:h3l1o5/mole.git ~/src/github.com/h3l1o5/mole
@@ -34,24 +75,34 @@ bun run build
 ./scripts/install.sh
 ```
 
-Make sure `~/.local/bin` is in your PATH.
+The installer will:
 
-## Deploy to a remote (one-time per host)
+1. Verify that `pngpaste`, `open`, and `launchctl` are available.
+2. Copy `mole` and `mole-daemon` to `~/.local/bin/`.
+3. Install and load the launchd agent (`com.h3l1o5.mole-daemon`).
+4. Ping the daemon to confirm it is serving on `/tmp/mole-clip.sock`.
+
+Make sure `~/.local/bin` is in your `PATH`.
+
+### On each Linux remote (once per host)
 
 ```bash
-cd ~/src/github.com/h3l1o5/mole
 scp remote/xclip remote/install.sh <host>:/tmp/
 ssh <host> 'bash /tmp/install.sh'
 ```
 
-## Create Chrome profiles
+This installs the `xclip` shim at `~/.local/bin/xclip`. Confirm with
+`ssh <host> 'which xclip'`; it should resolve to the shim rather than
+`/usr/bin/xclip`.
+
+### Chrome profile setup
 
 ```bash
 mkdir -p ~/.chrome-profiles/work ~/.chrome-profiles/personal
 ```
 
-First time mole launches Chrome with one of these, you'll need to log back
-into your sites. Settings persist in the profile directory forever after.
+The first time `mole` launches Chrome with a given profile you will need
+to sign in to your sites again. Profile state is preserved thereafter.
 
 ## Usage
 
@@ -59,53 +110,75 @@ into your sites. Settings persist in the profile directory forever after.
 mole
 ```
 
-Pick your host, pick your Chrome profile, let preflight finish, and you're
-in the remote shell. `Ctrl+V` in Claude Code now pastes your Mac clipboard.
-Chrome DevTools Protocol is available on `localhost:9222` from the remote.
-
-When you're done, `exit` the remote shell — mole cleans up and returns you
-to your Mac shell silently.
+1. Pick the SSH host from `~/.ssh/config`.
+2. Pick a Chrome profile. Profiles marked `busy` (in use by a non-debug
+   Chrome) are disabled; `reusable` profiles attach to the existing debug
+   Chrome.
+3. Watch the three preflight checks turn green: Chrome, Mac daemon,
+   remote preflight.
+4. You are dropped into the remote shell. `Ctrl+V` in Claude Code pastes
+   your Mac clipboard. `http://localhost:9222` on the remote is your Mac
+   Chrome.
+5. When you are done, type `exit`. `mole` kills the remote socat bridge
+   and returns you to your Mac shell silently.
 
 ## Switching between Macs
 
-Just run `mole` on the Mac you want to be active. The reverse tunnel
-automatically migrates. The other Mac's SSH session keeps running (tmux,
-Claude Code, etc.) but its clipboard/Chrome paths go dark until you run
-`mole` on it again.
+Run `mole` on whichever Mac you want to be active. The reverse tunnel
+migrates automatically — the other Mac's clipboard and Chrome paths go
+dark until you run `mole` on it again. The other SSH session (and any
+tmux or Claude Code inside it) keeps running.
 
 ## Troubleshooting
 
-**Daemon not responding.**
+<details>
+<summary><strong>Daemon not responding</strong></summary>
+
 ```bash
 launchctl kickstart -k gui/$UID/com.h3l1o5.mole-daemon
 tail ~/.local/state/mole/mole-daemon.err.log
 ```
 
-**Remote preflight fails (`socat not installed`).**
+</details>
+
+<details>
+<summary><strong>Remote preflight fails with <code>socat not installed</code></strong></summary>
+
 ```bash
-# On remote:
-sudo apt install socat   # debian/ubuntu
-sudo dnf install socat   # rhel/fedora
+sudo apt install socat   # Debian/Ubuntu
+sudo dnf install socat   # RHEL/Fedora
 ```
 
-**`which xclip` on remote points to `/usr/bin/xclip` instead of the shim.**
-Your `PATH` doesn't have `~/.local/bin` first. Fix in `~/.bashrc`:
+</details>
+
+<details>
+<summary><strong><code>which xclip</code> on the remote still points to <code>/usr/bin/xclip</code></strong></summary>
+
+`~/.local/bin` is not ahead of the system directories on the remote.
+Add the following to `~/.bashrc` (or `~/.zshrc`):
+
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**Chrome profile shows `busy`.** Close your regular Chrome instance that's
-using that profile, or pick a different profile.
+</details>
 
-## Design
+<details>
+<summary><strong>Chrome profile stuck on <code>busy</code></strong></summary>
 
-See [docs/2026-04-24-mole-design.md](docs/2026-04-24-mole-design.md).
+A non-debug Chrome instance is holding the profile's SingletonLock.
+Quit that Chrome window, or pick a different profile.
+
+</details>
 
 ## Uninstall
 
 ```bash
 ./scripts/uninstall.sh
 ```
+
+Binaries, the launchd agent, and the daemon socket are removed. Logs in
+`~/.local/state/mole/` are preserved.
 
 ## License
 
