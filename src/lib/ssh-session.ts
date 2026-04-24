@@ -1,3 +1,5 @@
+import { spawn, type ChildProcess } from 'node:child_process';
+
 export interface SshOptions {
   host: string;
   clipSocket?: string;
@@ -19,8 +21,6 @@ export function buildSshArgs(opts: SshOptions): string[] {
   ];
 }
 
-export function spawnSsh(opts: SshOptions): Bun.Subprocess {
-  return Bun.spawn(['ssh', ...buildSshArgs(opts)], {
-    stdio: ['inherit', 'inherit', 'inherit'],
-  });
+export function spawnSsh(opts: SshOptions): ChildProcess {
+  return spawn('ssh', buildSshArgs(opts), { stdio: 'inherit' });
 }

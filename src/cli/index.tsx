@@ -134,13 +134,17 @@ async function main() {
   const pre = await runPreflightWithUi(host, profile);
   if (!pre.ok) process.exit(1);
 
-  // restore TTY to sane state before handing off — ink may leave raw mode
-  // and an unreset stdin termios makes ssh's line discipline unusable
+  // Hand the TTY off to ssh cleanly. ink leaves stdin in raw mode on
+  // unmount; if the Bun parent keeps reading stdin it races with the
+  // ssh child and input feels completely stuck. So: reset termios,
+  // detach our stdin, then spawn ssh via node:child_process.
   if (process.stdin.isTTY) process.stdin.setRawMode(false);
+  process.stdin.pause();
+  process.stdin.unref();
   Bun.spawnSync(['stty', 'sane'], { stdio: ['inherit', 'inherit', 'inherit'] });
 
   const ssh = spawnSsh({ host: host.name });
-  await ssh.exited;
+  await new Promise<void>((resolve) => ssh.on('exit', () => resolve()));
 
   // cleanup (silent)
   if (pre.socatPid !== undefined) {
