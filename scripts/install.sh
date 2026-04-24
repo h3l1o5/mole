@@ -38,12 +38,19 @@ launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
 echo "Loaded launchd service: $LABEL"
 
-# quick health check
-sleep 0.5
-if curl -sf --unix-socket /tmp/mole-clip.sock http://x/type >/dev/null 2>&1; then
+# health check (retry; compiled bun binary takes a few seconds on first launch)
+healthy=false
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 0.5
+  if curl -sf --unix-socket /tmp/mole-clip.sock http://x/type >/dev/null 2>&1; then
+    healthy=true
+    break
+  fi
+done
+if $healthy; then
   echo "Daemon healthy. All set."
 else
-  echo "WARNING: daemon did not respond on /tmp/mole-clip.sock"
+  echo "WARNING: daemon did not respond on /tmp/mole-clip.sock after 5s"
   echo "Check logs:"
   echo "  tail $LOG_DIR/mole-daemon.err.log"
 fi
