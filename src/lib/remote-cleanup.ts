@@ -1,3 +1,5 @@
+import { buildNonInteractiveSshArgs } from './ssh-spawn';
+
 export function buildCleanupScript(socatPid: number): string {
   return `
 pid=${socatPid}
@@ -27,11 +29,14 @@ export async function runCleanup(
   socatPid: number,
 ): Promise<{ ok: boolean; error?: string }> {
   return runCleanupWith(host, socatPid, async (h, script) => {
-    const proc = Bun.spawn(['ssh', h, 'bash', '-s'], {
-      stdin: 'pipe',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const proc = Bun.spawn(
+      ['ssh', ...buildNonInteractiveSshArgs(h, ['bash', '-s'])],
+      {
+        stdin: 'pipe',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
     proc.stdin.write(script);
     proc.stdin.end();
     const [stdout, stderr, code] = await Promise.all([

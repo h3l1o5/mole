@@ -1,3 +1,5 @@
+import { buildNonInteractiveSshArgs } from './ssh-spawn';
+
 export interface PreflightOptions {
   chromeSocket?: string;
   chromePort?: number;
@@ -61,11 +63,14 @@ export async function runPreflight(
   return runPreflightWith(
     host,
     async (h, script) => {
-      const proc = Bun.spawn(['ssh', h, 'bash', '-s'], {
-        stdin: 'pipe',
-        stdout: 'pipe',
-        stderr: 'pipe',
-      });
+      const proc = Bun.spawn(
+        ['ssh', ...buildNonInteractiveSshArgs(h, ['bash', '-s'])],
+        {
+          stdin: 'pipe',
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      );
       proc.stdin.write(script);
       proc.stdin.end();
       const [stdout, stderr, code] = await Promise.all([
