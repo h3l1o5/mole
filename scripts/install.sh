@@ -18,10 +18,7 @@ for cmd in pngpaste open launchctl; do
   }
 done
 
-if [ ! -f "$ROOT/dist/mole" ] || [ ! -f "$ROOT/dist/mole-daemon" ]; then
-  echo "Binaries missing; running build first..."
-  "$ROOT/scripts/build.sh"
-fi
+"$ROOT/scripts/build.sh"
 
 mkdir -p "$BIN_DIR" "$LOG_DIR" "$LA_DIR"
 cp "$ROOT/dist/mole" "$BIN_DIR/mole"
