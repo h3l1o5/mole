@@ -18,12 +18,7 @@ export function parseSshConfig(content: string): SshHost[] {
     const hostMatch = line.match(/^Host\s+(.+)$/i);
     if (hostMatch) {
       if (current) hosts.push(current);
-      const names = hostMatch[1];
-      if (names === undefined) {
-        current = null;
-        continue;
-      }
-      const firstName = names.split(/\s+/)[0];
+      const firstName = hostMatch[1]!.split(/\s+/)[0];
       if (!firstName || firstName.includes('*') || firstName.includes('?')) {
         current = null;
       } else {
@@ -36,9 +31,9 @@ export function parseSshConfig(content: string): SshHost[] {
 
     const kv = line.match(/^(\S+)\s+(.+)$/);
     if (!kv) continue;
-    const key = kv[1];
-    const value = kv[2];
-    if (key !== undefined && key.toLowerCase() === 'hostname' && value !== undefined) {
+    const key = kv[1]!;
+    const value = kv[2]!;
+    if (key.toLowerCase() === 'hostname') {
       current.hostname = value.trim();
     }
   }
