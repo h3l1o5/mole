@@ -11,6 +11,8 @@ export function buildNonInteractiveSshArgs(
     'ControlMaster=no',
     '-o',
     'ControlPath=none',
+    '-o',
+    'ConnectTimeout=5',
     host,
     ...command,
   ];

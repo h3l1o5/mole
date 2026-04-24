@@ -5,6 +5,7 @@ describe('buildSshArgs', () => {
   test('uses defaults', () => {
     expect(buildSshArgs({ host: 'prod' })).toEqual([
       '-t', '-t',
+      '-q',
       '-o', 'StreamLocalBindUnlink=yes',
       '-o', 'ExitOnForwardFailure=no',
       '-o', 'ControlMaster=no',
@@ -25,6 +26,7 @@ describe('buildSshArgs', () => {
       }),
     ).toEqual([
       '-t', '-t',
+      '-q',
       '-o', 'StreamLocalBindUnlink=yes',
       '-o', 'ExitOnForwardFailure=no',
       '-o', 'ControlMaster=no',

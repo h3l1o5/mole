@@ -13,6 +13,7 @@ export function buildSshArgs(opts: SshOptions): string[] {
   const port = opts.chromePort ?? 9222;
   return [
     '-t', '-t',
+    '-q',
     '-o', 'StreamLocalBindUnlink=yes',
     '-o', 'ExitOnForwardFailure=no',
     '-o', 'ControlMaster=no',

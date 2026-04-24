@@ -18,6 +18,11 @@ describe('buildNonInteractiveSshArgs', () => {
     expect(args).toContain('ControlPath=none');
   });
 
+  test('caps ConnectTimeout so cleanup/watchdog fail fast when remote is unreachable', () => {
+    const args = buildNonInteractiveSshArgs('myhost', ['bash', '-s']);
+    expect(args).toContain('ConnectTimeout=5');
+  });
+
   test('host comes before the remote command', () => {
     const args = buildNonInteractiveSshArgs('myhost', ['bash', '-s']);
     const hostIdx = args.indexOf('myhost');

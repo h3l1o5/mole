@@ -155,10 +155,14 @@ async function main() {
 
   const ssh = spawnSsh({ host: host.name });
   let sshExited = false;
-  const sshExit = new Promise<void>((resolve) => {
-    ssh.on('exit', () => {
+  let hijacked = false;
+  const sshExit = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve) => {
+    ssh.on('exit', (code, signal) => {
       sshExited = true;
-      resolve();
+      resolve({ code, signal });
     });
   });
 
@@ -176,16 +180,40 @@ async function main() {
       process.stderr.write(
         '\r\n\x1b[33m[mole] another client took over the -R tunnel; disconnecting.\x1b[0m\r\n',
       );
+      hijacked = true;
       ssh.kill('SIGTERM');
     },
     isStopped: () => sshExited,
   });
 
-  await sshExit;
+  const { code, signal } = await sshExit;
 
-  // cleanup (silent)
+  // Summarise the disconnect. Hijack already printed its own yellow line
+  // on the way out; a clean user-initiated `exit` (code 0) doesn't need
+  // any chrome. Anything else (network drop, forced kill, etc) gets an
+  // explicit "[mole] disconnected" so the user knows mole is winding
+  // down rather than hung.
+  if (!hijacked && code !== 0) {
+    process.stderr.write(
+      `\r\n\x1b[33m[mole] disconnected from ${host.name}` +
+        (signal ? ` (signal ${signal})` : code !== null ? ` (code ${code})` : '') +
+        `.\x1b[0m\r\n`,
+    );
+  }
+
   if (pre.socatPid !== undefined) {
-    await runCleanup(host.name, pre.socatPid).catch(() => {});
+    const r = await runCleanup(host.name, pre.socatPid).catch((e) => ({
+      ok: false as const,
+      error: e instanceof Error ? e.message : String(e),
+    }));
+    if (r.ok) {
+      process.stderr.write('\x1b[2m[mole] remote socat cleaned up.\x1b[0m\r\n');
+    } else {
+      process.stderr.write(
+        `\x1b[33m[mole] cleanup failed: ${r.error ?? 'unknown'}. ` +
+          `socat pid ${pre.socatPid} may still be running on ${host.name}.\x1b[0m\r\n`,
+      );
+    }
   }
 }
 
