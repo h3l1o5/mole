@@ -70,4 +70,15 @@ describe('daemon server', () => {
     const r = await fetch('http://x/type', { unix: sockPath });
     expect(r.status).toBe(200);
   });
+
+  test('GET /id returns the configured client id', async () => {
+    server = await createServer(
+      sockPath,
+      async () => ({ type: 'empty' }),
+      { clientId: 'abc-123' },
+    );
+    const r = await fetch('http://x/id', { unix: sockPath });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ id: 'abc-123' });
+  });
 });

@@ -8,9 +8,14 @@ export interface MoleServer {
   stop: () => Promise<void>;
 }
 
+export interface ServerOptions {
+  clientId?: string;
+}
+
 export async function createServer(
   socketPath: string,
   readClipboard: ReadClipboardFn,
+  options: ServerOptions = {},
 ): Promise<MoleServer> {
   if (existsSync(socketPath)) {
     try {
@@ -24,6 +29,9 @@ export async function createServer(
     unix: socketPath,
     async fetch(req) {
       const url = new URL(req.url);
+      if (url.pathname === '/id') {
+        return Response.json({ id: options.clientId ?? '' });
+      }
       if (url.pathname === '/type') {
         const result = await readClipboard();
         if (result.type === 'image') {
