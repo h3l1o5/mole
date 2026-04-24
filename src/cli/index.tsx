@@ -11,6 +11,8 @@ import { isDaemonHealthy } from '../lib/daemon-health';
 import { runPreflight } from '../lib/remote-preflight';
 import { runCleanup } from '../lib/remote-cleanup';
 import { spawnSsh } from '../lib/ssh-session';
+import { buildNonInteractiveSshArgs } from '../lib/ssh-spawn';
+import { checkOnce } from './watchdog';
 
 async function pickHost(): Promise<SshHost | null> {
   const hosts = loadSshHosts();
@@ -148,13 +150,106 @@ async function main() {
   process.stdin.unref();
   Bun.spawnSync(['stty', 'sane'], { stdio: ['inherit', 'inherit', 'inherit'] });
 
+  const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';
+  const ourId = await fetchOurId(socketPath);
+
   const ssh = spawnSsh({ host: host.name });
-  await new Promise<void>((resolve) => ssh.on('exit', () => resolve()));
+  let sshExited = false;
+  const sshExit = new Promise<void>((resolve) => {
+    ssh.on('exit', () => {
+      sshExited = true;
+      resolve();
+    });
+  });
+
+  // Watchdog: if another Mac takes over the -R tunnel, sshd unlinks our
+  // forwarded socket without notice. Periodically ask the remote end
+  // who it's currently tunneling to; two strikes → bail so the user
+  // isn't silently talking to another Mac's daemon.
+  startHijackWatchdog({
+    host: host.name,
+    ourId,
+    onHijack: () => {
+      process.stderr.write(
+        '\n[mole] another mac took over the -R tunnel; disconnecting.\n',
+      );
+      ssh.kill('SIGTERM');
+    },
+    isStopped: () => sshExited,
+  });
+
+  await sshExit;
 
   // cleanup (silent)
   if (pre.socatPid !== undefined) {
     await runCleanup(host.name, pre.socatPid).catch(() => {});
   }
+}
+
+async function fetchOurId(socketPath: string): Promise<string | null> {
+  try {
+    const r = await fetch('http://x/id', { unix: socketPath });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { id?: string };
+    return typeof j.id === 'string' && j.id.length > 0 ? j.id : null;
+  } catch {
+    return null;
+  }
+}
+
+function startHijackWatchdog(opts: {
+  host: string;
+  ourId: string | null;
+  onHijack: () => void;
+  isStopped: () => boolean;
+}): void {
+  const intervalSec = Number(process.env.MOLE_WATCHDOG_SEC ?? 10);
+  if (!opts.ourId || !Number.isFinite(intervalSec) || intervalSec <= 0) return;
+  const intervalMs = intervalSec * 1000;
+  const ourId = opts.ourId;
+
+  const runner = async (host: string) => {
+    const proc = Bun.spawn(
+      [
+        'ssh',
+        ...buildNonInteractiveSshArgs(host, [
+          'curl',
+          '-sf',
+          '--max-time',
+          '3',
+          '--unix-socket',
+          '/tmp/mole-clip.sock',
+          'http://x/id',
+        ]),
+      ],
+      { stdout: 'pipe', stderr: 'ignore' },
+    );
+    const [stdout, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      proc.exited,
+    ]);
+    return { stdout, code };
+  };
+
+  void (async () => {
+    let strikes = 0;
+    while (!opts.isStopped()) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      if (opts.isStopped()) return;
+      const result = await checkOnce({ host: opts.host, ourId, runner });
+      if (result === 'mismatch') {
+        strikes++;
+        if (strikes >= 2) {
+          opts.onHijack();
+          return;
+        }
+      } else {
+        // 'ok' or 'unreachable' both reset — transient ssh blips shouldn't
+        // accumulate toward a false positive.
+        strikes = 0;
+      }
+    }
+  })();
 }
 
 main().catch((err) => {
