@@ -49,6 +49,21 @@ describe('SelectList', () => {
     expect(box.value).toBe('a');
   });
 
+  test('renders description alongside label when provided', () => {
+    const itemsWithDescription = [
+      { key: 'a', label: 'prod', description: 'prod.example.com', value: 'a' },
+      { key: 'b', label: 'dev', description: 'dev.example.com', value: 'b' },
+    ];
+    const { lastFrame } = render(
+      <SelectList items={itemsWithDescription} onSelect={() => {}} />,
+    );
+    const out = lastFrame()!;
+    expect(out).toContain('prod');
+    expect(out).toContain('prod.example.com');
+    expect(out).toContain('dev');
+    expect(out).toContain('dev.example.com');
+  });
+
   test('enter on disabled does nothing', async () => {
     const itemsAllDisabled = [
       { key: 'a', label: 'A', value: 'a', disabled: true },

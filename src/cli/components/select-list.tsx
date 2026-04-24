@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { colors, icons } from './theme';
 
 export interface SelectItem<T> {
   key: string;
   label: string;
+  description?: string;
   value: T;
   disabled?: boolean;
 }
@@ -40,14 +42,17 @@ export function SelectList<T>({ items, onSelect }: SelectListProps<T>) {
     <Box flexDirection="column">
       {items.map((item, i) => {
         const isActive = i === index && !item.disabled;
-        const marker = i === index ? '›' : ' ';
+        const marker = i === index ? icons.pointerSmall : ' ';
         return (
           <Text
             key={item.key}
-            color={isActive ? 'cyan' : undefined}
+            color={isActive ? colors.primary : undefined}
             dimColor={item.disabled}
           >
             {marker} {item.label}
+            {item.description ? (
+              <Text dimColor>  {item.description}</Text>
+            ) : null}
           </Text>
         );
       })}
