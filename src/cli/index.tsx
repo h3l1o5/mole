@@ -134,7 +134,11 @@ async function main() {
   const pre = await runPreflightWithUi(host, profile);
   if (!pre.ok) process.exit(1);
 
-  // hand TTY to ssh
+  // restore TTY to sane state before handing off — ink may leave raw mode
+  // and an unreset stdin termios makes ssh's line discipline unusable
+  if (process.stdin.isTTY) process.stdin.setRawMode(false);
+  Bun.spawnSync(['stty', 'sane'], { stdio: ['inherit', 'inherit', 'inherit'] });
+
   const ssh = spawnSsh({ host: host.name });
   await ssh.exited;
 

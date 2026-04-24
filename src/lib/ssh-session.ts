@@ -10,6 +10,7 @@ export function buildSshArgs(opts: SshOptions): string[] {
   const chrome = opts.chromeSocket ?? '/tmp/mole-chrome.sock';
   const port = opts.chromePort ?? 9222;
   return [
+    '-t', '-t',
     '-o', 'StreamLocalBindUnlink=yes',
     '-o', 'ExitOnForwardFailure=no',
     '-R', `${clip}:${clip}`,

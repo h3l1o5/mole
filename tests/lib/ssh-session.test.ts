@@ -4,6 +4,7 @@ import { buildSshArgs } from '../../src/lib/ssh-session';
 describe('buildSshArgs', () => {
   test('uses defaults', () => {
     expect(buildSshArgs({ host: 'prod' })).toEqual([
+      '-t', '-t',
       '-o', 'StreamLocalBindUnlink=yes',
       '-o', 'ExitOnForwardFailure=no',
       '-R', '/tmp/mole-clip.sock:/tmp/mole-clip.sock',
@@ -21,6 +22,7 @@ describe('buildSshArgs', () => {
         chromePort: 9333,
       }),
     ).toEqual([
+      '-t', '-t',
       '-o', 'StreamLocalBindUnlink=yes',
       '-o', 'ExitOnForwardFailure=no',
       '-R', '/tmp/a.sock:/tmp/a.sock',
