@@ -2,14 +2,24 @@ import { test, expect, describe } from 'bun:test';
 import { parseSshConfig } from '../../src/lib/ssh-config';
 
 describe('parseSshConfig', () => {
-  test('parses a single Host with HostName', () => {
+  test('parses a single Host with HostName and User', () => {
     const input = `
 Host foo
     HostName foo.example.com
     User alice
 `;
     expect(parseSshConfig(input)).toEqual([
-      { name: 'foo', hostname: 'foo.example.com' },
+      { name: 'foo', hostname: 'foo.example.com', user: 'alice' },
+    ]);
+  });
+
+  test('parses Host with only User set', () => {
+    const input = `
+Host work
+    User kuanghung
+`;
+    expect(parseSshConfig(input)).toEqual([
+      { name: 'work', user: 'kuanghung' },
     ]);
   });
 

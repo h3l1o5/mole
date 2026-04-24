@@ -5,6 +5,7 @@ import { join } from 'node:path';
 export interface SshHost {
   name: string;
   hostname?: string;
+  user?: string;
 }
 
 export function parseSshConfig(content: string): SshHost[] {
@@ -33,8 +34,11 @@ export function parseSshConfig(content: string): SshHost[] {
     if (!kv) continue;
     const key = kv[1]!;
     const value = kv[2]!;
-    if (key.toLowerCase() === 'hostname') {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === 'hostname') {
       current.hostname = value.trim();
+    } else if (lowerKey === 'user') {
+      current.user = value.trim();
     }
   }
 
