@@ -4,8 +4,15 @@ import {
   isPidAlive,
   checkProfileStatus,
   scanProfiles,
+  createProfile,
 } from '../../src/lib/chrome-profile';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -103,6 +110,73 @@ describe('scanProfiles', () => {
       const names = r.map((p) => p.name).sort();
       expect(names).toEqual(['personal', 'work']);
       expect(r.every((p) => p.status === 'free')).toBe(true);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('createProfile', () => {
+  test('creates directory and returns ProfileInfo when name is valid', () => {
+    const base = mkdtempSync(join(tmpdir(), 'mole-base-'));
+    try {
+      const info = createProfile('work', base);
+      expect(info).toEqual({
+        name: 'work',
+        path: join(base, 'work'),
+        status: 'free',
+      });
+      expect(existsSync(join(base, 'work'))).toBe(true);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  test('creates base directory if it does not exist', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'mole-parent-'));
+    const base = join(parent, 'chrome-profiles');
+    try {
+      createProfile('personal', base);
+      expect(existsSync(join(base, 'personal'))).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  test('throws when name already exists', () => {
+    const base = mkdtempSync(join(tmpdir(), 'mole-base-'));
+    try {
+      mkdirSync(join(base, 'dup'));
+      expect(() => createProfile('dup', base)).toThrow(/already exists/i);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  test.each([
+    ['empty', ''],
+    ['slash', 'a/b'],
+    ['backslash', 'a\\b'],
+    ['whitespace', 'foo bar'],
+    ['tab', 'foo\tbar'],
+    ['disallowed char', 'foo!'],
+    ['too long', 'x'.repeat(65)],
+    ['dot-only', '.'],
+    ['double-dot', '..'],
+  ])('rejects invalid name (%s)', (_desc, bad) => {
+    const base = mkdtempSync(join(tmpdir(), 'mole-base-'));
+    try {
+      expect(() => createProfile(bad, base)).toThrow();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  test('accepts allowed chars: letters, digits, dot, underscore, dash', () => {
+    const base = mkdtempSync(join(tmpdir(), 'mole-base-'));
+    try {
+      createProfile('Work.Dev_2025-main', base);
+      expect(existsSync(join(base, 'Work.Dev_2025-main'))).toBe(true);
     } finally {
       rmSync(base, { recursive: true, force: true });
     }

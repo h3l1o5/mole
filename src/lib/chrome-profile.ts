@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -69,6 +69,23 @@ export async function checkProfileStatus(
   }
 
   return { status: 'busy', pid };
+}
+
+const PROFILE_NAME_RE = /^[A-Za-z0-9._-]+$/;
+
+export function createProfile(
+  name: string,
+  baseDir: string = join(homedir(), '.chrome-profiles'),
+): ProfileInfo {
+  if (!PROFILE_NAME_RE.test(name) || name.length > 64 || name === '.' || name === '..') {
+    throw new Error(`Invalid profile name: "${name}"`);
+  }
+  const path = join(baseDir, name);
+  if (existsSync(path)) {
+    throw new Error(`Profile "${name}" already exists`);
+  }
+  mkdirSync(path, { recursive: true });
+  return { name, path, status: 'free' };
 }
 
 export async function scanProfiles(
