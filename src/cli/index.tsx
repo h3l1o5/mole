@@ -170,8 +170,11 @@ async function main() {
     host: host.name,
     ourId,
     onHijack: () => {
+      // ssh child puts the TTY in raw mode, so plain '\n' doesn't carriage
+      // return. Wrap with '\r\n' and colour the line so it stands apart
+      // from ssh's own "Connection to ... closed." that follows.
       process.stderr.write(
-        '\n[mole] another mac took over the -R tunnel; disconnecting.\n',
+        '\r\n\x1b[33m[mole] another mac took over the -R tunnel; disconnecting.\x1b[0m\r\n',
       );
       ssh.kill('SIGTERM');
     },
