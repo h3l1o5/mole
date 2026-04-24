@@ -8,9 +8,12 @@ LA_DIR="$HOME/Library/LaunchAgents"
 LABEL="com.h3l1o5.mole-daemon"
 PLIST="$LA_DIR/${LABEL}.plist"
 
-for cmd in osascript open launchctl; do
+for cmd in pngpaste open launchctl; do
   command -v "$cmd" >/dev/null 2>&1 || {
     echo "ERROR: missing command: $cmd" >&2
+    if [ "$cmd" = "pngpaste" ]; then
+      echo "Install with: brew install pngpaste" >&2
+    fi
     exit 1
   }
 done
