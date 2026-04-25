@@ -111,7 +111,7 @@ const App: React.FC<AppProps> = ({ onDone }) => {
     runPreflightSteps(submission, setStep)
       .then(async (pre) => {
         // Small pause so the user sees the final state before exit.
-        await new Promise((r) => setTimeout(r, pre.ok ? 200 : 600));
+        await new Promise((r) => setTimeout(r, pre.ok ? 200 : 300));
         onDone(submission, pre);
       })
       .catch((err) => {
@@ -119,7 +119,7 @@ const App: React.FC<AppProps> = ({ onDone }) => {
           state: 'error',
           error: err instanceof Error ? err.message : String(err),
         });
-        setTimeout(() => onDone(submission, { ok: false }), 600);
+        setTimeout(() => onDone(submission, { ok: false }), 300);
       });
   }, [submission, onDone]);
 
