@@ -131,7 +131,7 @@ describe('HostPicker', () => {
     expect(lastFrame()).not.toContain('z\n');
   });
 
-  test('Enter on the input row submits the typed value via onSelect', async () => {
+  test('Enter on input row with user@host submits the typed value', async () => {
     const box = { value: null as string | null };
     const { stdin } = render(
       <HostPicker
@@ -142,14 +142,51 @@ describe('HostPicker', () => {
       />,
     );
     await settle();
-    // Empty list -> input row is the only row, already focused.
-    for (const ch of 'custom.example.com') {
+    for (const ch of 'root@example.com') {
       stdin.write(ch);
       await settle();
     }
     stdin.write('\r');
     await settle();
-    expect(box.value).toBe('custom.example.com');
+    expect(box.value).toBe('root@example.com');
+  });
+
+  test('Enter on input row without user@host shows error and does not submit', async () => {
+    const box = { value: null as string | null };
+    const { stdin, lastFrame } = render(
+      <HostPicker
+        hosts={[]}
+        onSelect={(h) => {
+          box.value = h.name;
+        }}
+      />,
+    );
+    await settle();
+    for (const ch of 'just-a-hostname.com') {
+      stdin.write(ch);
+      await settle();
+    }
+    stdin.write('\r');
+    await settle();
+    expect(box.value).toBe(null);
+    expect(lastFrame()).toMatch(/user@hostname/i);
+  });
+
+  test('typing after a validation error clears the error', async () => {
+    const { stdin, lastFrame } = render(
+      <HostPicker hosts={[]} onSelect={() => {}} />,
+    );
+    await settle();
+    stdin.write('x');
+    await settle();
+    stdin.write('\r'); // invalid -> shows error
+    await settle();
+    expect(lastFrame()).toMatch(/user@hostname/i);
+    stdin.write('y');
+    await settle();
+    // The error message includes the literal "user@hostname" template;
+    // typing should clear that whole error line.
+    expect(lastFrame()).not.toMatch(/format/i);
   });
 
   test('Enter on an empty input row does nothing', async () => {

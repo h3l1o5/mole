@@ -1,31 +1,37 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { colors, icons } from './components/theme';
-import type { SshHost } from '../lib/ssh-config';
+import { describeHost, type SshHost } from '../lib/ssh-config';
 
 export interface HostPickerProps {
   hosts: SshHost[];
   onSelect: (host: SshHost) => void;
 }
 
-const PLACEHOLDER = 'user@hostname  or  ssh-config-entry';
+const PLACEHOLDER = 'user@hostname (e.g. root@example.com)';
+const VALIDATION_ERROR =
+  'Use format user@hostname (e.g. root@example.com)';
 
-function describeHost(h: SshHost): string | undefined {
-  if (h.user && h.hostname) return `${h.user}@${h.hostname}`;
-  if (h.user) return `${h.user}@${h.name}`;
-  if (h.hostname) return h.hostname;
-  return undefined;
-}
+// Single '@', no whitespace, both sides non-empty.
+const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
 
 export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
   const inputRowIndex = hosts.length;
   const [index, setIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const inputValueRef = useRef('');
+
+  // Clearing the error when the user moves off the input row keeps the
+  // message from re-surprising them when they navigate back.
+  useEffect(() => {
+    if (index !== inputRowIndex) setError(null);
+  }, [index, inputRowIndex]);
 
   const updateInput = (next: string) => {
     inputValueRef.current = next;
     setInputValue(next);
+    setError(null);
   };
 
   useInput((input, key) => {
@@ -42,7 +48,12 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
     if (key.return) {
       if (onInput) {
         const trimmed = inputValueRef.current.trim();
-        if (trimmed.length > 0) onSelect({ name: trimmed });
+        if (trimmed.length === 0) return;
+        if (!USER_HOST_RE.test(trimmed)) {
+          setError(VALIDATION_ERROR);
+          return;
+        }
+        onSelect({ name: trimmed });
       } else {
         const host = hosts[index];
         if (host) onSelect(host);
@@ -86,6 +97,9 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
           isActive={index === inputRowIndex}
           value={inputValue}
         />
+        {error ? (
+          <Text color={colors.error}>  {icons.warning} {error}</Text>
+        ) : null}
       </Box>
     </Box>
   );
