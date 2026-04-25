@@ -1,73 +1,72 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Box, Text, useInput } from 'ink';
 import { colors, icons } from './components/theme';
+import { TextInput } from './components/text-input';
 import { describeHost, type SshHost } from '../lib/ssh-config';
+import { handleTextInputKey } from './wizard/text-input-keys';
+import type { PickerUiState } from './wizard/reducer';
+
+const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
+const VALIDATION_ERROR = 'Use format user@hostname (e.g. root@example.com)';
+const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
 
 export interface HostPickerProps {
   hosts: SshHost[];
-  onSelect: (host: SshHost) => void;
+  ui: PickerUiState;
+  onUiChange: (patch: Partial<PickerUiState>) => void;
+  onPick: (host: SshHost) => void;
 }
 
-const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
-const VALIDATION_ERROR =
-  'Use format user@hostname (e.g. root@example.com)';
-
-// Single '@', no whitespace, both sides non-empty.
-const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
-
-export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
+export const HostPicker: React.FC<HostPickerProps> = ({
+  hosts,
+  ui,
+  onUiChange,
+  onPick,
+}) => {
   const inputRowIndex = hosts.length;
-  const [index, setIndex] = useState(0);
-  const [inputValue, setInputValue] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const inputValueRef = useRef('');
+  const onInput = ui.index === inputRowIndex;
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Clearing the error when the user moves off the input row keeps the
-  // message from re-surprising them when they navigate back.
-  useEffect(() => {
-    if (index !== inputRowIndex) setError(null);
-  }, [index, inputRowIndex]);
-
-  const updateInput = (next: string) => {
-    inputValueRef.current = next;
-    setInputValue(next);
-    setError(null);
-  };
+  // Move-off-input clears any stale validation error.
+  React.useEffect(() => {
+    if (!onInput) setError(null);
+  }, [onInput]);
 
   useInput((input, key) => {
-    const onInput = index === inputRowIndex;
+    if (onInput) {
+      const next = handleTextInputKey(
+        { value: ui.input, cursor: ui.cursor },
+        input,
+        key,
+      );
+      if (next) {
+        onUiChange({ input: next.value, cursor: next.cursor });
+        setError(null);
+        return;
+      }
+    }
 
     if (key.upArrow || (key.ctrl && input === 'p')) {
-      if (index > 0) setIndex(index - 1);
+      if (ui.index > 0) onUiChange({ index: ui.index - 1 });
       return;
     }
     if (key.downArrow || (key.ctrl && input === 'n')) {
-      if (index < inputRowIndex) setIndex(index + 1);
+      if (ui.index < inputRowIndex) onUiChange({ index: ui.index + 1 });
       return;
     }
     if (key.return) {
       if (onInput) {
-        const trimmed = inputValueRef.current.trim();
+        const trimmed = ui.input.trim();
         if (trimmed.length === 0) return;
         if (!USER_HOST_RE.test(trimmed)) {
           setError(VALIDATION_ERROR);
           return;
         }
-        onSelect({ name: trimmed });
+        onPick({ name: trimmed });
       } else {
-        const host = hosts[index];
-        if (host) onSelect(host);
+        const host = hosts[ui.index];
+        if (host) onPick(host);
       }
-      return;
-    }
-    if (!onInput) return;
-
-    if (key.backspace || key.delete) {
-      updateInput(inputValueRef.current.slice(0, -1));
-      return;
-    }
-    if (input && !key.ctrl && !key.meta) {
-      updateInput(inputValueRef.current + input);
     }
   });
 
@@ -85,7 +84,7 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
       </Box>
       <Box flexDirection="column">
         {hosts.map((h, i) => {
-          const isActive = i === index;
+          const isActive = i === ui.index;
           const marker = isActive ? icons.pointerSmall : ' ';
           const desc = describeHost(h);
           return (
@@ -95,10 +94,7 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
             </Text>
           );
         })}
-        <InputRow
-          isActive={index === inputRowIndex}
-          value={inputValue}
-        />
+        <InputRow active={onInput} value={ui.input} cursor={ui.cursor} />
         {error ? (
           <Text color={colors.error}>  {icons.warning} {error}</Text>
         ) : null}
@@ -107,30 +103,24 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
   );
 };
 
-const InputRow: React.FC<{ isActive: boolean; value: string }> = ({
-  isActive,
-  value,
-}) => {
-  const marker = isActive ? icons.pointerSmall : ' ';
-  if (!isActive) {
-    if (value.length === 0) {
-      return <Text dimColor>{marker} + Enter manually…</Text>;
-    }
-    return (
-      <Text>
-        {marker} {value}
-      </Text>
-    );
+const InputRow: React.FC<{
+  active: boolean;
+  value: string;
+  cursor: number;
+}> = ({ active, value, cursor }) => {
+  const marker = active ? icons.pointerSmall : ' ';
+  if (!active && value.length === 0) {
+    return <Text dimColor>{marker} + Enter manually…</Text>;
   }
   return (
-    <Text color={colors.primary}>
+    <Text color={active ? colors.primary : undefined}>
       {marker}{' '}
-      {value.length > 0 ? (
-        <Text color={colors.primary}>{value}</Text>
-      ) : (
-        <Text dimColor>{PLACEHOLDER}</Text>
-      )}
-      <Text dimColor>_</Text>
+      <TextInput
+        value={value}
+        cursor={cursor}
+        isActive={active}
+        placeholder={PLACEHOLDER}
+      />
     </Text>
   );
 };
