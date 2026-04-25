@@ -77,7 +77,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   };
 
   React.useEffect(() => {
-    if (!initialFocusSet.current && profiles.length >= 0) {
+    if (!initialFocusSet.current) {
       // Park cursor on first non-busy row so the user doesn't start on
       // a disabled item. After this we just clamp on out-of-range.
       const firstEnabled = profiles.findIndex((p) => p.status !== 'busy');
