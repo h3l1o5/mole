@@ -1,5 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { Spinner } from './components/spinner';
+import { colors, icons } from './components/theme';
 
 export type PreflightStepState = 'pending' | 'running' | 'ok' | 'error';
 
@@ -11,30 +13,24 @@ export interface PreflightStep {
   warning?: string;
 }
 
-const marker = (s: PreflightStepState): string => {
-  switch (s) {
-    case 'pending':
-      return '·';
+const Marker: React.FC<{ state: PreflightStepState }> = ({ state }) => {
+  switch (state) {
     case 'running':
-      return '…';
+      return <Spinner color={colors.primary} />;
     case 'ok':
-      return '✓';
+      return <Text color={colors.success}>{icons.tick}</Text>;
     case 'error':
-      return '✗';
+      return <Text color={colors.error}>{icons.cross}</Text>;
+    case 'pending':
+    default:
+      return <Text dimColor>·</Text>;
   }
 };
 
-const color = (s: PreflightStepState): string | undefined => {
-  switch (s) {
-    case 'ok':
-      return 'green';
-    case 'error':
-      return 'red';
-    case 'running':
-      return 'cyan';
-    default:
-      return undefined;
-  }
+const labelColor = (state: PreflightStepState): string | undefined => {
+  if (state === 'running') return colors.primary;
+  if (state === 'error') return colors.error;
+  return undefined;
 };
 
 export interface PreflightViewProps {
@@ -42,14 +38,29 @@ export interface PreflightViewProps {
 }
 
 export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
-  <Box flexDirection="column">
+  <Box flexDirection="column" paddingLeft={2}>
     {steps.map((s) => (
       <Box key={s.id} flexDirection="column">
-        <Text color={color(s.state)}>
-          {marker(s.state)} {s.label}
-        </Text>
-        {s.error ? <Text color="red">    {s.error}</Text> : null}
-        {s.warning ? <Text color="yellow">    ⚠ {s.warning}</Text> : null}
+        <Box gap={1}>
+          <Marker state={s.state} />
+          <Text
+            color={labelColor(s.state)}
+            dimColor={s.state === 'pending'}
+          >
+            {s.label}
+          </Text>
+        </Box>
+        {s.error ? (
+          <Box paddingLeft={2}>
+            <Text color={colors.error}>{s.error}</Text>
+          </Box>
+        ) : null}
+        {s.warning ? (
+          <Box paddingLeft={2} gap={1}>
+            <Text color={colors.warning}>{icons.warning}</Text>
+            <Text color={colors.warning}>{s.warning}</Text>
+          </Box>
+        ) : null}
       </Box>
     ))}
   </Box>
