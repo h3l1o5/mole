@@ -48,10 +48,12 @@ describe('<ReviewStep>', () => {
     expect(frame).not.toContain('launch Chrome');
   });
 
-  test('submitted=true does not break rendering (fields still present)', () => {
+  test('submitted=true hides the hint and still shows fields', () => {
     const { lastFrame } = render(
       <ReviewStep host={HOST} profile={PROFILE} submitted />,
     );
-    expect(lastFrame()).toContain('vbm');
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('vbm');
+    expect(frame).not.toContain('Press enter to start');
   });
 });
