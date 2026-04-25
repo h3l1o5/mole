@@ -71,29 +71,65 @@ const STEP_NAMES = {
 const STEP_ORDER: WizardStep[] = ['host', 'profile', 'review'];
 const MIN_VALUE = 8;
 
+type Tone = 'normal' | 'warning' | 'dim';
+
 interface ValuePlan {
   hostValue: string | null;
+  hostTone: Tone;
   profileValue: string | null;
-  profileTone: 'normal' | 'warning' | 'dim';
+  profileTone: Tone;
 }
 
+// Decide which step values appear in the breadcrumb and in what tone.
+// One row per cell of the (step × hostName × profileName) truth table:
+//
+//   step    │ host         │ profile
+//   ────────┼──────────────┼─────────────
+//   host    │ dim if set   │ hidden  (future step)
+//   profile │ normal       │ dim if set (back from review)
+//   review  │ normal       │ normal / warning(skipped)
+//
+// Principles:
+//  1. Future steps never show their value — keeping breadcrumb in
+//     sync with what the user has actually walked through.
+//  2. Past steps show the chosen value; tone reflects the final pick
+//     (skip → warning).
+//  3. The current step shows a dim "you picked this last time" hint
+//     only when the user has navigated back into it from a later
+//     step; otherwise it stays bare so the cyan+bold label leads.
 function planValues(input: BreadcrumbInput): ValuePlan {
-  const hostValue = input.hostName ?? null;
-  let profileValue: string | null = null;
-  let profileTone: ValuePlan['profileTone'] = 'normal';
-  if (input.profileName === 'skip') {
-    profileValue = 'skipped';
-    profileTone = 'warning';
-  } else if (input.profileName != null) {
-    profileValue = input.profileName;
+  const { step, hostName, profileName } = input;
+  const plan: ValuePlan = {
+    hostValue: null,
+    hostTone: 'normal',
+    profileValue: null,
+    profileTone: 'normal',
+  };
+
+  if (hostName) {
+    if (step === 'host') {
+      plan.hostValue = hostName;
+      plan.hostTone = 'dim';
+    } else {
+      // step === 'profile' or 'review' → host is past
+      plan.hostValue = hostName;
+      plan.hostTone = 'normal';
+    }
   }
-  if (input.step === 'profile' && profileValue) {
-    profileTone = 'dim';
+
+  if (profileName != null) {
+    const display = profileName === 'skip' ? 'skipped' : profileName;
+    if (step === 'review') {
+      plan.profileValue = display;
+      plan.profileTone = profileName === 'skip' ? 'warning' : 'normal';
+    } else if (step === 'profile') {
+      plan.profileValue = display;
+      plan.profileTone = 'dim';
+    }
+    // step === 'host' → profile is future, leave hidden.
   }
-  if (input.step === 'host') {
-    return { hostValue: null, profileValue, profileTone };
-  }
-  return { hostValue, profileValue, profileTone };
+
+  return plan;
 }
 
 function buildSegments(
@@ -111,7 +147,11 @@ function buildSegments(
       seg.push({ kind: 'label', text: name });
     }
     if (s === 'host' && values.hostValue) {
-      seg.push({ kind: 'value', text: values.hostValue, tone: 'normal' });
+      seg.push({
+        kind: 'value',
+        text: values.hostValue,
+        tone: values.hostTone,
+      });
     }
     if (s === 'profile' && values.profileValue) {
       seg.push({

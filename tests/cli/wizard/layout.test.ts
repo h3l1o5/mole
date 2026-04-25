@@ -67,65 +67,126 @@ describe('isFallbackMode', () => {
   });
 });
 
-import { layoutBreadcrumb } from '../../../src/cli/wizard/layout';
+import {
+  layoutBreadcrumb,
+  type BreadcrumbSegment,
+} from '../../../src/cli/wizard/layout';
+import type { WizardStep } from '../../../src/cli/wizard/reducer';
 
-describe('layoutBreadcrumb', () => {
-  test('full mode for ample width, no value when not yet selected', () => {
-    const r = layoutBreadcrumb(
-      { step: 'host', hostName: null, profileName: null },
-      80,
-    );
-    expect(r.mode).toBe('full');
-    if (r.mode === 'fallback') throw new Error();
-    // Current step (host) is bold-cyan; future steps dim.
-    const labels = r.segments
-      .filter((s) => s.kind === 'currentLabel' || s.kind === 'label')
-      .map((s) => s.text);
-    expect(labels).toEqual(['Host', 'Profile', 'Review']);
-    // No value segments yet.
-    expect(r.segments.find((s) => s.kind === 'value')).toBeUndefined();
+// Helper: extract just the value segments and their tones, in order.
+function valuePairs(
+  segments: BreadcrumbSegment[],
+): { text: string; tone: 'normal' | 'warning' | 'dim' }[] {
+  return segments.flatMap((s) =>
+    s.kind === 'value' ? [{ text: s.text, tone: s.tone }] : [],
+  );
+}
+
+// Helper: extract step labels with the kind tag, in order.
+function stepLabels(
+  segments: BreadcrumbSegment[],
+): { kind: 'label' | 'currentLabel'; text: string }[] {
+  return segments.flatMap((s) =>
+    s.kind === 'label' || s.kind === 'currentLabel'
+      ? [{ kind: s.kind, text: s.text }]
+      : [],
+  );
+}
+
+function fitted(
+  step: WizardStep,
+  hostName: string | null,
+  profileName: string | 'skip' | null,
+) {
+  const r = layoutBreadcrumb({ step, hostName, profileName }, 80);
+  if (r.mode === 'fallback') {
+    throw new Error('expected wide breadcrumb, got fallback');
+  }
+  return r;
+}
+
+// Truth table: every (step × hostName × profileName) combination that
+// the reducer can actually produce, mapped to the expected value
+// visibility and tone. Each row is one regression-anchored test.
+describe('layoutBreadcrumb — value visibility truth table', () => {
+  test('host step / no selections / no values', () => {
+    const r = fitted('host', null, null);
+    expect(valuePairs(r.segments)).toEqual([]);
+    expect(stepLabels(r.segments)).toEqual([
+      { kind: 'currentLabel', text: 'Host' },
+      { kind: 'label', text: 'Profile' },
+      { kind: 'label', text: 'Review' },
+    ]);
   });
 
-  test('full mode shows host value once host picked', () => {
-    const r = layoutBreadcrumb(
-      { step: 'profile', hostName: 'vbm', profileName: null },
-      80,
-    );
-    expect(r.mode).toBe('full');
-    if (r.mode === 'fallback') throw new Error();
-    const values = r.segments
-      .filter((s) => s.kind === 'value')
-      .map((s) => s.text);
-    expect(values).toEqual(['vbm']);
+  test('host step / hostName set (back from profile) / host shown dim', () => {
+    const r = fitted('host', 'vbm', null);
+    expect(valuePairs(r.segments)).toEqual([{ text: 'vbm', tone: 'dim' }]);
   });
 
-  test('profile value uses tone=dim when user returned from review', () => {
-    // When user is on profile step but profileName is already set, the
-    // prior selection is shown dim (signals "you picked this; pick again
-    // or move on"). Spec: design.md L128.
-    const r = layoutBreadcrumb(
-      { step: 'profile', hostName: 'vbm', profileName: 'agent' },
-      80,
-    );
-    if (r.mode === 'fallback') throw new Error();
-    const profile = r.segments.find(
-      (s) => s.kind === 'value' && s.text === 'agent',
-    );
-    expect(profile?.kind === 'value' && profile.tone).toBe('dim');
+  test('host step / both set (back from review) / only host dim, no profile', () => {
+    // Future steps must never leak their value — profile is future here.
+    const r = fitted('host', 'vbm', 'agent');
+    expect(valuePairs(r.segments)).toEqual([{ text: 'vbm', tone: 'dim' }]);
   });
 
-  test("'skipped' value uses tone=warning", () => {
-    const r = layoutBreadcrumb(
-      { step: 'review', hostName: 'vbm', profileName: 'skip' },
-      80,
-    );
-    if (r.mode === 'fallback') throw new Error();
-    const skip = r.segments.find(
-      (s) => s.kind === 'value' && s.text === 'skipped',
-    );
-    expect(skip?.kind === 'value' && skip.tone).toBe('warning');
+  test('host step / profile=skip (back from review) / only host dim, no skipped', () => {
+    const r = fitted('host', 'vbm', 'skip');
+    expect(valuePairs(r.segments)).toEqual([{ text: 'vbm', tone: 'dim' }]);
   });
 
+  test('profile step / first time / host normal, no profile', () => {
+    const r = fitted('profile', 'vbm', null);
+    expect(valuePairs(r.segments)).toEqual([
+      { text: 'vbm', tone: 'normal' },
+    ]);
+  });
+
+  test('profile step / back from review (agent) / host normal, profile dim', () => {
+    const r = fitted('profile', 'vbm', 'agent');
+    expect(valuePairs(r.segments)).toEqual([
+      { text: 'vbm', tone: 'normal' },
+      { text: 'agent', tone: 'dim' },
+    ]);
+  });
+
+  test('profile step / back from review (skip) / host normal, skipped dim', () => {
+    const r = fitted('profile', 'vbm', 'skip');
+    expect(valuePairs(r.segments)).toEqual([
+      { text: 'vbm', tone: 'normal' },
+      { text: 'skipped', tone: 'dim' },
+    ]);
+  });
+
+  test('review step / agent / host normal, agent normal', () => {
+    const r = fitted('review', 'vbm', 'agent');
+    expect(valuePairs(r.segments)).toEqual([
+      { text: 'vbm', tone: 'normal' },
+      { text: 'agent', tone: 'normal' },
+    ]);
+  });
+
+  test('review step / skip / host normal, skipped warning', () => {
+    const r = fitted('review', 'vbm', 'skip');
+    expect(valuePairs(r.segments)).toEqual([
+      { text: 'vbm', tone: 'normal' },
+      { text: 'skipped', tone: 'warning' },
+    ]);
+  });
+
+  test('current step is always tagged currentLabel; others stay label', () => {
+    for (const step of ['host', 'profile', 'review'] as const) {
+      const r = fitted(step, step === 'host' ? null : 'vbm', step === 'review' ? 'agent' : null);
+      const labels = stepLabels(r.segments);
+      const current = labels.find((l) => l.kind === 'currentLabel');
+      expect(current?.text.toLowerCase()).toBe(step);
+      // Exactly one currentLabel.
+      expect(labels.filter((l) => l.kind === 'currentLabel').length).toBe(1);
+    }
+  });
+});
+
+describe('layoutBreadcrumb — width adaptation', () => {
   test('truncates host value when overflowing', () => {
     const r = layoutBreadcrumb(
       {
@@ -133,14 +194,13 @@ describe('layoutBreadcrumb', () => {
         hostName: 'alice@verylonghost.example.com',
         profileName: 'work-account-test',
       },
-      64, // tight enough to require host truncation
+      64,
     );
     if (r.mode === 'fallback') throw new Error();
     const hostValue = r.segments.find(
       (s) => s.kind === 'value' && s.text.startsWith('alice@'),
     );
     expect(hostValue?.text.endsWith('…')).toBe(true);
-    // Profile should still be intact at this width.
     expect(
       r.segments.find(
         (s) => s.kind === 'value' && s.text === 'work-account-test',
@@ -169,19 +229,37 @@ describe('layoutBreadcrumb', () => {
       },
       30,
     );
-    expect(r.mode).toBe('fallback');
     if (r.mode !== 'fallback') throw new Error();
     expect(r.text).toBe('2/3 · Profile');
   });
 
-  test('fallback step counter on host step', () => {
-    // Pure labels are 23 cols (Host › Profile › Review with short sep).
-    // innerWidth=20 forces fallback even with no values to truncate.
+  test('fallback step counter on host step (innerWidth=20)', () => {
+    // Pure labels alone are 23 cols (Host › Profile › Review with short
+    // separator); innerWidth=20 forces fallback regardless of values.
     const r = layoutBreadcrumb(
       { step: 'host', hostName: null, profileName: null },
       20,
     );
     if (r.mode !== 'fallback') throw new Error();
     expect(r.text).toBe('1/3 · Host');
+  });
+
+  test('truncation preserves tone (host dim stays dim)', () => {
+    // When the user navigates back to the host step with a long host
+    // already chosen, the host value should still be tone=dim even
+    // after width-driven truncation.
+    const r = layoutBreadcrumb(
+      {
+        step: 'host',
+        hostName: 'alice@verylonghost.example.com',
+        profileName: null,
+      },
+      40,
+    );
+    if (r.mode === 'fallback') return; // separately covered above
+    const hostValue = r.segments.find(
+      (s) => s.kind === 'value' && s.text.startsWith('alice@'),
+    );
+    expect(hostValue?.kind === 'value' && hostValue.tone).toBe('dim');
   });
 });

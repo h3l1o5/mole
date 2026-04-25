@@ -280,6 +280,45 @@ const wizardCases: Case[] = [
   },
   {
     view: 'wizard',
+    name: 'breadcrumb back to host (host shown dim, profile hidden)',
+    run: () =>
+      snapshot(
+        <Breadcrumb
+          step="host"
+          hostName="vbm"
+          profileName="agent"
+          innerWidth={74}
+        />,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'breadcrumb back to profile from review (profile dim)',
+    run: () =>
+      snapshot(
+        <Breadcrumb
+          step="profile"
+          hostName="vbm"
+          profileName="agent"
+          innerWidth={74}
+        />,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'breadcrumb back to profile after skip review (skipped dim)',
+    run: () =>
+      snapshot(
+        <Breadcrumb
+          step="profile"
+          hostName="vbm"
+          profileName="skip"
+          innerWidth={74}
+        />,
+      ),
+  },
+  {
+    view: 'wizard',
     name: 'review with chrome',
     run: () =>
       snapshot(
