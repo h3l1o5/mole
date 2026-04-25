@@ -71,4 +71,36 @@ describe('PreflightView', () => {
     expect(out).toContain('cannot verify sshd StreamLocalBindUnlink');
     unmount();
   });
+
+  // Layout regression guard: figures.tick (✔ U+2714) and figures.warning
+  // (⚠ U+26A0) measure as width=2 in string-width but render as 1 column,
+  // which makes Box gap={1} insert an extra ASCII space. All marker glyphs
+  // we ship must measure as width=1 so the marker→label gap is uniform
+  // across states.
+  test('every marker leaves exactly one space before the label', () => {
+    const states = ['pending', 'running', 'ok', 'error'] as const;
+    for (const state of states) {
+      const { lastFrame, unmount } = render(
+        <PreflightView steps={[{ id: 's', label: 'LABEL', state }]} />,
+      );
+      const out = lastFrame()!;
+      // paddingLeft={2} + marker (1 char) + gap=1 (1 space) + label.
+      expect(out).toMatch(/^ {2}\S LABEL$/);
+      unmount();
+    }
+  });
+
+  test('warning sub-row leaves exactly one space before the message', () => {
+    const { lastFrame, unmount } = render(
+      <PreflightView
+        steps={[
+          { id: 'r', label: 'L', state: 'ok', warning: 'WARN' },
+        ]}
+      />,
+    );
+    const out = lastFrame()!;
+    // paddingLeft={2} (outer) + paddingLeft={2} (warning row) + icon + 1 + WARN.
+    expect(out).toMatch(/^ {4}\S WARN$/m);
+    unmount();
+  });
 });

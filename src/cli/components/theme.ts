@@ -8,11 +8,15 @@ export const colors = {
   info: 'blue',
 } as const;
 
+// figures.tick (✔ U+2714) and figures.warning (⚠ U+26A0) measure as
+// width=2 in string-width but render as 1 column in real terminals. Box
+// gap={1} then inserts an extra space, breaking marker→label alignment.
+// Use the light variants which measure consistently as width=1.
 export const icons = {
-  tick: figures.tick,
+  tick: '✓',
   cross: figures.cross,
   info: figures.info,
-  warning: figures.warning,
+  warning: '△',
   pointer: figures.pointer,
   pointerSmall: figures.pointerSmall,
   ellipsis: figures.ellipsis,

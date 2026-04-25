@@ -11,14 +11,18 @@ describe('theme', () => {
     expect(colors.info).toBeDefined();
   });
 
-  test('icons are sourced from figures (so Windows falls back automatically)', () => {
-    expect(icons.tick).toBe(figures.tick);
+  test('icons mostly pass through figures, except width-glitch overrides', () => {
+    // Pass-throughs.
     expect(icons.cross).toBe(figures.cross);
     expect(icons.info).toBe(figures.info);
-    expect(icons.warning).toBe(figures.warning);
     expect(icons.pointer).toBe(figures.pointer);
     expect(icons.pointerSmall).toBe(figures.pointerSmall);
     expect(icons.ellipsis).toBe(figures.ellipsis);
+    // figures.tick / figures.warning measure as width=2 in string-width
+    // but render as 1 column; we override with width=1 alternates so
+    // <Box gap={1}> spacing stays uniform across markers.
+    expect(icons.tick).toBe('✓');
+    expect(icons.warning).toBe('△');
   });
 
   test('spinnerFrames is a non-empty animation sequence', () => {
