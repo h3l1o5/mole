@@ -1,5 +1,9 @@
 import { test, expect, describe } from 'bun:test';
-import { truncate } from '../../../src/cli/wizard/layout';
+import {
+  truncate,
+  computeWizardWidth,
+  isFallbackMode,
+} from '../../../src/cli/wizard/layout';
 
 describe('truncate', () => {
   test('returns the string unchanged when it fits', () => {
@@ -30,5 +34,35 @@ describe('truncate', () => {
 
   test('handles empty input', () => {
     expect(truncate('', 5)).toBe('');
+  });
+});
+
+describe('computeWizardWidth', () => {
+  test('clamps below MIN', () => {
+    expect(computeWizardWidth(40)).toBe(56);
+    expect(computeWizardWidth(56)).toBe(56);
+  });
+
+  test('clamps above MAX', () => {
+    expect(computeWizardWidth(200)).toBe(80);
+    expect(computeWizardWidth(84)).toBe(80);
+  });
+
+  test('subtracts 4 cols of breathing room in between', () => {
+    expect(computeWizardWidth(70)).toBe(66);
+    expect(computeWizardWidth(80)).toBe(76);
+    expect(computeWizardWidth(60)).toBe(56);
+  });
+});
+
+describe('isFallbackMode', () => {
+  test('true when terminal narrower than 50 cols', () => {
+    expect(isFallbackMode(49)).toBe(true);
+    expect(isFallbackMode(20)).toBe(true);
+  });
+
+  test('false from 50 cols upward', () => {
+    expect(isFallbackMode(50)).toBe(false);
+    expect(isFallbackMode(80)).toBe(false);
   });
 });
