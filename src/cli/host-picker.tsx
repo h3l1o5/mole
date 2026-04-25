@@ -8,7 +8,7 @@ export interface HostPickerProps {
   onSelect: (host: SshHost) => void;
 }
 
-const PLACEHOLDER = 'user@hostname (e.g. root@example.com)';
+const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
 const VALIDATION_ERROR =
   'Use format user@hostname (e.g. root@example.com)';
 
