@@ -81,4 +81,34 @@ describe('<Breadcrumb>', () => {
     );
     expect(lastFrame()).toContain('Host vbm');
   });
+
+  test('frozen prop renders without crashing and keeps structure', () => {
+    const { lastFrame } = render(
+      <Breadcrumb
+        step="review"
+        hostName="vbm"
+        profileName="agent"
+        innerWidth={80}
+        frozen
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('Host vbm');
+    expect(frame).toContain('Profile agent');
+    expect(frame).toContain('Review');
+  });
+
+  test('frozen fallback mode renders step counter', () => {
+    const { lastFrame } = render(
+      <Breadcrumb
+        step="profile"
+        hostName="alice@verylonghost.example.com"
+        profileName={null}
+        innerWidth={20}
+        frozen
+      />,
+    );
+    expect(lastFrame()).toContain('2/3');
+    expect(lastFrame()).toContain('Profile');
+  });
 });
