@@ -54,6 +54,26 @@ describe('handleTextInputKey', () => {
         handleTextInputKey({ value: 'abc', cursor: 1 }, 'e', k({ ctrl: true })),
       ).toEqual({ value: 'abc', cursor: 3 });
     });
+
+    test('meta+leftArrow (Cmd+Left on macOS) jumps to start', () => {
+      expect(
+        handleTextInputKey(
+          { value: 'abc', cursor: 2 },
+          '',
+          k({ meta: true, leftArrow: true }),
+        ),
+      ).toEqual({ value: 'abc', cursor: 0 });
+    });
+
+    test('meta+rightArrow (Cmd+Right on macOS) jumps to end', () => {
+      expect(
+        handleTextInputKey(
+          { value: 'abc', cursor: 1 },
+          '',
+          k({ meta: true, rightArrow: true }),
+        ),
+      ).toEqual({ value: 'abc', cursor: 3 });
+    });
   });
 
   describe('insertion', () => {
@@ -81,18 +101,26 @@ describe('handleTextInputKey', () => {
       ).toBeNull();
     });
 
-    test('meta+key is ignored', () => {
+    test('plain meta+letter is ignored (no arrow)', () => {
       expect(
         handleTextInputKey({ value: 'abc', cursor: 1 }, 'x', k({ meta: true })),
       ).toBeNull();
     });
   });
 
-  describe('deletion', () => {
+  describe('deletion (both backspace and delete delete-left)', () => {
     test('backspace removes char before cursor', () => {
       expect(
         handleTextInputKey({ value: 'abc', cursor: 2 }, '', k({ backspace: true })),
       ).toEqual({ value: 'ac', cursor: 1 });
+    });
+
+    test('backspace at end of value removes last char', () => {
+      // Regression: when cursor is at end (cursor === value.length),
+      // backspace should still erase the trailing char.
+      expect(
+        handleTextInputKey({ value: 'hello', cursor: 5 }, '', k({ backspace: true })),
+      ).toEqual({ value: 'hell', cursor: 4 });
     });
 
     test('backspace at start: returns null', () => {
@@ -101,15 +129,26 @@ describe('handleTextInputKey', () => {
       ).toBeNull();
     });
 
-    test('delete removes char at cursor', () => {
+    test("delete acts like backspace (Mac's main Delete key fires key.delete)", () => {
+      // Mac's main Delete key (the one that erases left) shows up as
+      // key.delete in some terminals. It must behave like backspace —
+      // erase the char to the LEFT of cursor.
       expect(
-        handleTextInputKey({ value: 'abc', cursor: 1 }, '', k({ delete: true })),
+        handleTextInputKey({ value: 'abc', cursor: 2 }, '', k({ delete: true })),
       ).toEqual({ value: 'ac', cursor: 1 });
     });
 
-    test('delete at end: returns null', () => {
+    test('delete at end of value removes last char (delete-left)', () => {
+      // Regression for the "delete only works mid-text" bug: cursor at
+      // end + key.delete must still erase the last char.
       expect(
-        handleTextInputKey({ value: 'abc', cursor: 3 }, '', k({ delete: true })),
+        handleTextInputKey({ value: 'hello', cursor: 5 }, '', k({ delete: true })),
+      ).toEqual({ value: 'hell', cursor: 4 });
+    });
+
+    test('delete at start: returns null', () => {
+      expect(
+        handleTextInputKey({ value: 'abc', cursor: 0 }, '', k({ delete: true })),
       ).toBeNull();
     });
   });
