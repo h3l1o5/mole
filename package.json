@@ -10,6 +10,7 @@
   "scripts": {
     "dev:cli": "bun run src/cli/index.tsx",
     "dev:daemon": "bun run src/daemon/main.ts",
+    "preview": "bun run scripts/preview.tsx",
     "daemon:stop": "launchctl bootout gui/$UID/com.h3l1o5.mole-daemon",
     "daemon:start": "launchctl bootstrap gui/$UID $HOME/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist",
     "daemon:status": "launchctl print gui/$UID/com.h3l1o5.mole-daemon 2>/dev/null | grep -E '^\\s*(state|pid) = ' || echo 'not loaded'",
