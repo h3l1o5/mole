@@ -142,7 +142,7 @@ export const Wizard: React.FC<WizardProps> = ({
         </Box>
       </WizardFrame>
       {state.submitted && belowFrame ? (
-        <Box marginTop={1}>{belowFrame(state)}</Box>
+        <Box marginTop={1} marginBottom={1}>{belowFrame(state)}</Box>
       ) : null}
     </Box>
   );

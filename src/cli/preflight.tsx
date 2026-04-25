@@ -41,8 +41,9 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
   <Box flexDirection="column" paddingLeft={2}>
     {steps.map((s) => (
       <Box key={s.id} flexDirection="column">
-        <Box gap={1}>
+        <Box>
           <Marker state={s.state} />
+          <Text> </Text>
           <Text
             color={labelColor(s.state)}
             dimColor={s.state === 'pending'}
@@ -56,8 +57,9 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
           </Box>
         ) : null}
         {s.warning ? (
-          <Box paddingLeft={2} gap={1}>
+          <Box paddingLeft={2}>
             <Text color={colors.warning}>{icons.warning}</Text>
+            <Text> </Text>
             <Text color={colors.warning}>{s.warning}</Text>
           </Box>
         ) : null}
