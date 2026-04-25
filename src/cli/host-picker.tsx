@@ -78,7 +78,9 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
           Select an <Text color={colors.primary}>SSH host</Text> to tunnel into.
         </Text>
         <Text dimColor>
-          These are loaded from ~/.ssh/config. Or type one below.
+          {hosts.length === 0
+            ? 'No hosts found in ~/.ssh/config. Type one below.'
+            : 'These are loaded from ~/.ssh/config. Or type one below.'}
         </Text>
       </Box>
       <Box flexDirection="column">
@@ -89,7 +91,7 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
           return (
             <Text key={h.name} color={isActive ? colors.primary : undefined}>
               {marker} {h.name}
-              {desc ? <Text dimColor>  {desc}</Text> : null}
+              {desc ? <Text dimColor> · {desc}</Text> : null}
             </Text>
           );
         })}

@@ -8,7 +8,7 @@ const makeScanner = (profiles: ProfileInfo[]) => async () => profiles;
 const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 
 describe('ProfilePicker', () => {
-  test('renders all profiles with their status text', async () => {
+  test('renders all profiles, with status text only for non-free statuses', async () => {
     const profiles: ProfileInfo[] = [
       { name: 'work', path: '/p/work', status: 'free' },
       { name: 'heavy', path: '/p/heavy', status: 'busy', pid: 123 },
@@ -24,11 +24,29 @@ describe('ProfilePicker', () => {
     await settle();
     const out = lastFrame()!;
     expect(out).toContain('work');
-    expect(out).toContain('free');
     expect(out).toContain('heavy');
     expect(out).toContain('busy');
     expect(out).toContain('old');
     expect(out).toContain('reusable');
+  });
+
+  test('free is the default state and shows no redundant label', async () => {
+    // free is the only status that needs no warning; surfacing the word
+    // "free" next to every ready profile is visual noise. The non-default
+    // statuses (busy/reusable/stale) still get their explanatory text.
+    const { lastFrame } = render(
+      <ProfilePicker
+        scanner={makeScanner([
+          { name: 'work', path: '/p/work', status: 'free' },
+        ])}
+        intervalMs={20}
+        onSelect={() => {}}
+      />,
+    );
+    await settle();
+    const out = lastFrame()!;
+    expect(out).toContain('work');
+    expect(out).not.toContain('free');
   });
 
   test('intro mentions ~/.chrome-profiles/', async () => {

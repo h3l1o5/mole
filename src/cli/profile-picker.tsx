@@ -154,12 +154,12 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
             <Text key={p.name} color={isActive ? colors.primary : undefined}>
               {marker}{' '}
               <Text dimColor={p.status === 'busy'}>{p.name}</Text>
-              {'  '}
-              {sColor ? (
-                <Text color={sColor}>{statusLabel(p.status)}</Text>
-              ) : (
-                <Text dimColor>{statusLabel(p.status)}</Text>
-              )}
+              {p.status !== 'free' ? (
+                <>
+                  {'  '}
+                  <Text color={sColor}>{statusLabel(p.status)}</Text>
+                </>
+              ) : null}
             </Text>
           );
         })}

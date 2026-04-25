@@ -2,6 +2,7 @@ import React from 'react';
 import { test, expect, describe } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { HostPicker } from '../../src/cli/host-picker';
+import type { SshHost } from '../../src/lib/ssh-config';
 
 const settle = () => new Promise((r) => setTimeout(r, 20));
 
@@ -78,6 +79,28 @@ describe('HostPicker', () => {
     // With no hosts, the input row is index 0 and already focused.
     expect(lastFrame()).toContain('user@hostname');
     expect(lastFrame()).toContain('~/.ssh/config');
+  });
+
+  test('host description is shown after a middot separator (not double space)', () => {
+    // Double-space separators leave rows without a description looking
+    // orphaned. A " · " separator scans cleanly and matches terminal
+    // aesthetic (git, breadcrumbs).
+    const hostsWithDesc: SshHost[] = [
+      { name: 'web', hostname: 'web.example.com', user: 'alice' },
+    ];
+    const { lastFrame } = render(
+      <HostPicker hosts={hostsWithDesc} onSelect={() => {}} />,
+    );
+    expect(lastFrame()).toContain('web · alice@web.example.com');
+  });
+
+  test('intro acknowledges empty ssh config explicitly', () => {
+    const { lastFrame } = render(
+      <HostPicker hosts={[]} onSelect={() => {}} />,
+    );
+    // When the list is empty, the "loaded from" copy is misleading; we
+    // should acknowledge the empty state instead.
+    expect(lastFrame()!.toLowerCase()).toContain('no hosts found');
   });
 
   test('Enter on first host submits that host', async () => {
