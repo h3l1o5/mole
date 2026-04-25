@@ -99,6 +99,21 @@ describe('layoutBreadcrumb', () => {
     expect(values).toEqual(['vbm']);
   });
 
+  test('profile value uses tone=dim when user returned from review', () => {
+    // When user is on profile step but profileName is already set, the
+    // prior selection is shown dim (signals "you picked this; pick again
+    // or move on"). Spec: design.md L128.
+    const r = layoutBreadcrumb(
+      { step: 'profile', hostName: 'vbm', profileName: 'agent' },
+      80,
+    );
+    if (r.mode === 'fallback') throw new Error();
+    const profile = r.segments.find(
+      (s) => s.kind === 'value' && s.text === 'agent',
+    );
+    expect(profile?.kind === 'value' && profile.tone).toBe('dim');
+  });
+
   test("'skipped' value uses tone=warning", () => {
     const r = layoutBreadcrumb(
       { step: 'review', hostName: 'vbm', profileName: 'skip' },

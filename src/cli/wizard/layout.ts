@@ -199,6 +199,9 @@ function tryFit(
   return segmentsWidth(segs) <= innerWidth ? segs : null;
 }
 
+// Render contract: between a `label` / `currentLabel` segment and its
+// following `value` segment, the renderer MUST insert exactly one space.
+// Width budgeting in this module assumes that exact spacing.
 export function layoutBreadcrumb(
   input: BreadcrumbInput,
   innerWidth: number,
