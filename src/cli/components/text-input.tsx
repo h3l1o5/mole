@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import { colors } from './theme';
 
 export interface TextInputProps {
@@ -24,11 +24,13 @@ export const TextInput: React.FC<TextInputProps> = ({
 
   if (value.length === 0) {
     if (placeholder) {
+      // Use Text wrapper (not Box) so callers can embed <TextInput>
+      // inside <Text> rows — Ink forbids <Box> inside <Text>.
       return (
-        <Box>
+        <Text>
           <Text inverse> </Text>
           <Text dimColor>{placeholder}</Text>
-        </Box>
+        </Text>
       );
     }
     return <Text inverse> </Text>;

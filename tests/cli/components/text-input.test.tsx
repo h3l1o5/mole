@@ -1,6 +1,7 @@
 import React from 'react';
 import { test, expect, describe } from 'bun:test';
 import { render } from 'ink-testing-library';
+import { Text } from 'ink';
 import { TextInput } from '../../../src/cli/components/text-input';
 
 describe('<TextInput>', () => {
@@ -49,5 +50,23 @@ describe('<TextInput>', () => {
     );
     // value 'hi' + a space char for the cursor block.
     expect(lastFrame()).toMatch(/hi/);
+  });
+
+  test('renders inside <Text> parent (pickers wrap input rows in Text)', () => {
+    // Regression: HostPicker / ProfilePicker put TextInput inside <Text>;
+    // Ink forbids <Box> inside <Text>, so TextInput must never use <Box>.
+    const { lastFrame } = render(
+      <Text>
+        marker{' '}
+        <TextInput
+          value=""
+          cursor={0}
+          isActive
+          placeholder="type here…"
+        />
+      </Text>,
+    );
+    expect(lastFrame()).toContain('type here…');
+    expect(lastFrame()).toContain('marker');
   });
 });
