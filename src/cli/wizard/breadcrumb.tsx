@@ -30,7 +30,7 @@ const renderSegment = (
       );
     }
     return (
-      <Text key={i} color={colors.primary} bold>
+      <Text key={i} color={colors.primary} bold underline>
         {s.text}
       </Text>
     );
@@ -80,7 +80,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
         {frozen ? (
           <Text dimColor>{current}</Text>
         ) : (
-          <Text color={colors.primary} bold>
+          <Text color={colors.primary} bold underline>
             {current}
           </Text>
         )}
