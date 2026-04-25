@@ -73,13 +73,22 @@ export async function checkProfileStatus(
 
 const PROFILE_NAME_RE = /^[A-Za-z0-9._-]+$/;
 
+export function validateProfileName(name: string): string | null {
+  if (name.length === 0) return 'Name is required';
+  if (name.length > 64) return 'Invalid: name too long (max 64 chars)';
+  if (name === '.' || name === '..') return 'Invalid: reserved name';
+  if (!PROFILE_NAME_RE.test(name)) {
+    return 'Invalid: allowed chars are letters, digits, . _ -';
+  }
+  return null;
+}
+
 export function createProfile(
   name: string,
   baseDir: string = join(homedir(), '.chrome-profiles'),
 ): ProfileInfo {
-  if (!PROFILE_NAME_RE.test(name) || name.length > 64 || name === '.' || name === '..') {
-    throw new Error(`Invalid profile name: "${name}"`);
-  }
+  const err = validateProfileName(name);
+  if (err) throw new Error(err);
   const path = join(baseDir, name);
   if (existsSync(path)) {
     throw new Error(`Profile "${name}" already exists`);

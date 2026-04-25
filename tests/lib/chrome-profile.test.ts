@@ -5,6 +5,7 @@ import {
   checkProfileStatus,
   scanProfiles,
   createProfile,
+  validateProfileName,
 } from '../../src/lib/chrome-profile';
 import {
   mkdtempSync,
@@ -113,6 +114,33 @@ describe('scanProfiles', () => {
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
+  });
+});
+
+describe('validateProfileName', () => {
+  test('returns null for valid names', () => {
+    expect(validateProfileName('work')).toBeNull();
+    expect(validateProfileName('Work.Dev_2025-main')).toBeNull();
+  });
+
+  test('rejects empty', () => {
+    expect(validateProfileName('')).toMatch(/required/i);
+  });
+
+  test('rejects names longer than 64 chars', () => {
+    expect(validateProfileName('x'.repeat(65))).toMatch(/too long/i);
+  });
+
+  test('rejects reserved dot/double-dot', () => {
+    expect(validateProfileName('.')).toMatch(/reserved/i);
+    expect(validateProfileName('..')).toMatch(/reserved/i);
+  });
+
+  test('rejects disallowed characters with a hint listing what is allowed', () => {
+    const err = validateProfileName('foo!');
+    expect(err).toMatch(/letters|digits/i);
+    expect(validateProfileName('foo bar')).not.toBeNull();
+    expect(validateProfileName('a/b')).not.toBeNull();
   });
 });
 
