@@ -72,25 +72,25 @@ describe('PreflightView', () => {
     unmount();
   });
 
-  // Layout regression guard: figures.tick (✔ U+2714) and figures.warning
-  // (⚠ U+26A0) measure as width=2 in string-width but render as 1 column,
-  // which makes Box gap={1} insert an extra ASCII space. All marker glyphs
-  // we ship must measure as width=1 so the marker→label gap is uniform
-  // across states.
-  test('every marker leaves exactly one space before the label', () => {
+  // Layout regression guard. We render two trailing spaces after every
+  // marker, not one: some terminal fonts paint the marker glyph (e.g.
+  // ✓ U+2713) wide enough to swallow a single trailing space, leaving
+  // marker and label visually touching. Two spaces survives that and
+  // keeps alignment uniform across pending / running / ok / error.
+  test('every marker leaves exactly two spaces before the label', () => {
     const states = ['pending', 'running', 'ok', 'error'] as const;
     for (const state of states) {
       const { lastFrame, unmount } = render(
         <PreflightView steps={[{ id: 's', label: 'LABEL', state }]} />,
       );
       const out = lastFrame()!;
-      // paddingLeft={2} + marker (1 char) + gap=1 (1 space) + label.
-      expect(out).toMatch(/^ {2}\S LABEL$/);
+      // paddingLeft={2} + marker (1 char) + 2 spaces + label.
+      expect(out).toMatch(/^ {2}\S {2}LABEL$/);
       unmount();
     }
   });
 
-  test('warning sub-row leaves exactly one space before the message', () => {
+  test('warning sub-row leaves exactly two spaces before the message', () => {
     const { lastFrame, unmount } = render(
       <PreflightView
         steps={[
@@ -99,8 +99,8 @@ describe('PreflightView', () => {
       />,
     );
     const out = lastFrame()!;
-    // paddingLeft={2} (outer) + paddingLeft={2} (warning row) + icon + 1 + WARN.
-    expect(out).toMatch(/^ {4}\S WARN$/m);
+    // outer paddingLeft={2} + warning paddingLeft={2} + icon + 2 spaces + WARN.
+    expect(out).toMatch(/^ {4}\S {2}WARN$/m);
     unmount();
   });
 });
