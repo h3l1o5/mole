@@ -16,8 +16,10 @@ import { render } from 'ink-testing-library';
 import { PreflightView, type PreflightStep } from '../src/cli/preflight';
 import { HostPicker } from '../src/cli/host-picker';
 import { ProfilePicker } from '../src/cli/profile-picker';
+import { ReviewStep } from '../src/cli/wizard/review';
+import { Breadcrumb } from '../src/cli/wizard/breadcrumb';
+import { WizardFrame } from '../src/cli/wizard/frame';
 import type { SshHost } from '../src/lib/ssh-config';
-import type { ProfileInfo } from '../src/lib/chrome-profile';
 
 interface Case {
   view: string;
@@ -157,170 +159,194 @@ const sampleHosts: SshHost[] = [
   { name: 'thor', hostname: '%h.syno', user: 'root' },
 ];
 
+const hostUi = { index: 0, input: '', cursor: 0 };
+const noopUi = (_p: unknown) => {};
+
 const hostPickerCases: Case[] = [
   {
     view: 'host-picker',
     name: 'initial focus on first host',
-    run: () => snapshot(<HostPicker hosts={sampleHosts} onSelect={() => {}} />),
+    run: () =>
+      snapshot(
+        <HostPicker
+          hosts={sampleHosts}
+          ui={hostUi}
+          onUiChange={noopUi}
+          onPick={() => {}}
+        />,
+      ),
   },
   {
     view: 'host-picker',
     name: 'no ssh hosts',
-    run: () => snapshot(<HostPicker hosts={[]} onSelect={() => {}} />),
+    run: () =>
+      snapshot(
+        <HostPicker
+          hosts={[]}
+          ui={hostUi}
+          onUiChange={noopUi}
+          onPick={() => {}}
+        />,
+      ),
   },
   {
     view: 'host-picker',
-    name: 'focus moved onto manual-entry row',
+    name: 'manual entry: cursor in middle of typed value',
     run: () =>
-      snapshot(<HostPicker hosts={sampleHosts} onSelect={() => {}} />, async (s) => {
-        // 4 down arrows -> move past all 4 hosts onto input row.
-        for (let i = 0; i < 4; i++) {
-          s.write('\x1b[B');
-          await settle(10);
-        }
-      }),
-  },
-  {
-    view: 'host-picker',
-    name: 'manual entry: typing valid input',
-    run: () =>
-      snapshot(<HostPicker hosts={[]} onSelect={() => {}} />, async (s) => {
-        for (const ch of 'root@example.com') {
-          s.write(ch);
-          await settle(5);
-        }
-      }),
-  },
-  {
-    view: 'host-picker',
-    name: 'manual entry: invalid input + validation error',
-    run: () =>
-      snapshot(<HostPicker hosts={[]} onSelect={() => {}} />, async (s) => {
-        for (const ch of 'not-a-host') {
-          s.write(ch);
-          await settle(5);
-        }
-        s.write('\r');
-        await settle(20);
-      }),
+      snapshot(
+        <HostPicker
+          hosts={[]}
+          ui={{ index: 0, input: 'root@example.com', cursor: 4 }}
+          onUiChange={noopUi}
+          onPick={() => {}}
+        />,
+      ),
   },
 ];
-
-const profileScanner = (profiles: ProfileInfo[]) => async () => profiles;
 
 const profilePickerCases: Case[] = [
   {
     view: 'profile-picker',
-    name: 'no profiles (only manual entry)',
+    name: 'no profiles (only manual entry + skip row)',
     run: () =>
       snapshot(
         <ProfilePicker
-          scanner={profileScanner([])}
-          intervalMs={1000}
-          onSelect={() => {}}
+          profiles={[]}
+          ui={{ index: 0, input: '', cursor: 0 }}
+          onUiChange={noopUi}
+          onPick={() => {}}
         />,
       ),
   },
   {
     view: 'profile-picker',
-    name: 'mixed statuses (free / busy / reusable / stale)',
+    name: 'mixed statuses with cursor on Skip Chrome row',
     run: () =>
       snapshot(
         <ProfilePicker
-          scanner={profileScanner([
+          profiles={[
             { name: 'work', path: '/p/work', status: 'free' },
-            { name: 'personal', path: '/p/personal', status: 'busy', pid: 123 },
-            { name: 'shared', path: '/p/shared', status: 'reusable', pid: 456 },
-            { name: 'leftover', path: '/p/leftover', status: 'stale', pid: 789 },
-          ])}
-          intervalMs={1000}
-          onSelect={() => {}}
+            { name: 'agent', path: '/p/agent', status: 'reusable', pid: 4242 },
+          ]}
+          ui={{ index: 3, input: '', cursor: 0 }} // index 0+1 profiles, 2 input, 3 skip
+          onUiChange={noopUi}
+          onPick={() => {}}
+        />,
+      ),
+  },
+];
+
+const wizardCases: Case[] = [
+  {
+    view: 'wizard',
+    name: 'frame at default 80 cols',
+    run: () =>
+      snapshot(
+        <WizardFrame>
+          <Breadcrumb
+            step="profile"
+            hostName="vbm"
+            profileName={null}
+            innerWidth={74}
+          />
+        </WizardFrame>,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'breadcrumb truncation @ 64 inner cols',
+    run: () =>
+      snapshot(
+        <Breadcrumb
+          step="review"
+          hostName="alice@verylonghost.example.com"
+          profileName="work-account-test"
+          innerWidth={64}
         />,
       ),
   },
   {
-    view: 'profile-picker',
-    name: 'all busy (initial focus jumps to manual entry)',
+    view: 'wizard',
+    name: 'breadcrumb fallback step counter',
     run: () =>
       snapshot(
-        <ProfilePicker
-          scanner={profileScanner([
-            { name: 'a', path: '/p/a', status: 'busy', pid: 1 },
-            { name: 'b', path: '/p/b', status: 'busy', pid: 2 },
-          ])}
-          intervalMs={1000}
-          onSelect={() => {}}
+        <Breadcrumb
+          step="profile"
+          hostName="vbm"
+          profileName={null}
+          innerWidth={20}
         />,
       ),
   },
   {
-    view: 'profile-picker',
-    name: 'manual entry: typing a new profile name',
+    view: 'wizard',
+    name: 'review with chrome',
     run: () =>
       snapshot(
-        <ProfilePicker
-          scanner={profileScanner([
-            { name: 'work', path: '/p/work', status: 'free' },
-          ])}
-          intervalMs={1000}
-          onSelect={() => {}}
-        />,
-        async (s) => {
-          // Move to the input row (1 down past the single profile).
-          s.write('\x1b[B');
-          await settle(10);
-          for (const ch of 'side-project') {
-            s.write(ch);
-            await settle(5);
-          }
-        },
+        <WizardFrame>
+          <Breadcrumb
+            step="review"
+            hostName="vbm"
+            profileName="agent"
+            innerWidth={74}
+          />
+          <ReviewStep
+            host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+            profile={{
+              name: 'agent',
+              path: '/p/agent',
+              status: 'reusable',
+              pid: 4242,
+            }}
+            submitted={false}
+          />
+        </WizardFrame>,
       ),
   },
   {
-    view: 'profile-picker',
-    name: 'manual entry: invalid name + validation error',
+    view: 'wizard',
+    name: 'review with skip Chrome',
     run: () =>
       snapshot(
-        <ProfilePicker
-          scanner={profileScanner([])}
-          intervalMs={1000}
-          onSelect={() => {}}
-        />,
-        async (s) => {
-          for (const ch of 'has spaces') {
-            s.write(ch);
-            await settle(5);
-          }
-          s.write('\r');
-          await settle(20);
-        },
+        <WizardFrame>
+          <Breadcrumb
+            step="review"
+            hostName="vbm"
+            profileName="skip"
+            innerWidth={74}
+          />
+          <ReviewStep
+            host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+            profile="skip"
+            submitted={false}
+          />
+        </WizardFrame>,
       ),
   },
   {
-    view: 'profile-picker',
-    name: 'manual entry: duplicate profile name (creator throws)',
+    view: 'wizard',
+    name: 'review submitted (frozen)',
     run: () =>
       snapshot(
-        <ProfilePicker
-          scanner={profileScanner([
-            { name: 'work', path: '/p/work', status: 'free' },
-          ])}
-          intervalMs={1000}
-          creator={() => {
-            throw new Error('Profile "work" already exists');
-          }}
-          onSelect={() => {}}
-        />,
-        async (s) => {
-          s.write('\x1b[B');
-          await settle(10);
-          for (const ch of 'work') {
-            s.write(ch);
-            await settle(5);
-          }
-          s.write('\r');
-          await settle(20);
-        },
+        <WizardFrame frozen>
+          <Breadcrumb
+            step="review"
+            hostName="vbm"
+            profileName="agent"
+            innerWidth={74}
+            frozen
+          />
+          <ReviewStep
+            host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+            profile={{
+              name: 'agent',
+              path: '/p/agent',
+              status: 'reusable',
+              pid: 4242,
+            }}
+            submitted
+          />
+        </WizardFrame>,
       ),
   },
 ];
@@ -329,6 +355,7 @@ const ALL: Case[] = [
   ...preflightCases,
   ...hostPickerCases,
   ...profilePickerCases,
+  ...wizardCases,
 ];
 
 const filter = process.argv[2];
