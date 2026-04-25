@@ -66,3 +66,107 @@ describe('isFallbackMode', () => {
     expect(isFallbackMode(80)).toBe(false);
   });
 });
+
+import { layoutBreadcrumb } from '../../../src/cli/wizard/layout';
+
+describe('layoutBreadcrumb', () => {
+  test('full mode for ample width, no value when not yet selected', () => {
+    const r = layoutBreadcrumb(
+      { step: 'host', hostName: null, profileName: null },
+      80,
+    );
+    expect(r.mode).toBe('full');
+    if (r.mode === 'fallback') throw new Error();
+    // Current step (host) is bold-cyan; future steps dim.
+    const labels = r.segments
+      .filter((s) => s.kind === 'currentLabel' || s.kind === 'label')
+      .map((s) => s.text);
+    expect(labels).toEqual(['Host', 'Profile', 'Review']);
+    // No value segments yet.
+    expect(r.segments.find((s) => s.kind === 'value')).toBeUndefined();
+  });
+
+  test('full mode shows host value once host picked', () => {
+    const r = layoutBreadcrumb(
+      { step: 'profile', hostName: 'vbm', profileName: null },
+      80,
+    );
+    expect(r.mode).toBe('full');
+    if (r.mode === 'fallback') throw new Error();
+    const values = r.segments
+      .filter((s) => s.kind === 'value')
+      .map((s) => s.text);
+    expect(values).toEqual(['vbm']);
+  });
+
+  test("'skipped' value uses tone=warning", () => {
+    const r = layoutBreadcrumb(
+      { step: 'review', hostName: 'vbm', profileName: 'skip' },
+      80,
+    );
+    if (r.mode === 'fallback') throw new Error();
+    const skip = r.segments.find(
+      (s) => s.kind === 'value' && s.text === 'skipped',
+    );
+    expect(skip?.kind === 'value' && skip.tone).toBe('warning');
+  });
+
+  test('truncates host value when overflowing', () => {
+    const r = layoutBreadcrumb(
+      {
+        step: 'review',
+        hostName: 'alice@verylonghost.example.com',
+        profileName: 'work-account-test',
+      },
+      64, // tight enough to require host truncation
+    );
+    if (r.mode === 'fallback') throw new Error();
+    const hostValue = r.segments.find(
+      (s) => s.kind === 'value' && s.text.startsWith('alice@'),
+    );
+    expect(hostValue?.text.endsWith('…')).toBe(true);
+    // Profile should still be intact at this width.
+    expect(
+      r.segments.find(
+        (s) => s.kind === 'value' && s.text === 'work-account-test',
+      ),
+    ).toBeDefined();
+  });
+
+  test('switches to short separator when full no longer fits', () => {
+    const r = layoutBreadcrumb(
+      {
+        step: 'review',
+        hostName: 'alice@verylonghost.example.com',
+        profileName: 'work-account-test',
+      },
+      44,
+    );
+    expect(r.mode).toBe('short');
+  });
+
+  test('falls back to step counter when nothing fits', () => {
+    const r = layoutBreadcrumb(
+      {
+        step: 'profile',
+        hostName: 'alice@verylonghost.example.com',
+        profileName: null,
+      },
+      30,
+    );
+    expect(r.mode).toBe('fallback');
+    if (r.mode !== 'fallback') throw new Error();
+    expect(r.text).toBe('2/3 · Profile');
+  });
+
+  test('fallback step counter on host step', () => {
+    // Pure labels are 23 cols (Host › Profile › Review with short sep).
+    // innerWidth=20 forces fallback even with no values to truncate.
+    const r = layoutBreadcrumb(
+      { step: 'host', hostName: null, profileName: null },
+      20,
+    );
+    if (r.mode !== 'fallback') throw new Error();
+    expect(r.text).toBe('1/3 · Host');
+  });
+});
