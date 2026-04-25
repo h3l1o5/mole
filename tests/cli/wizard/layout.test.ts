@@ -22,7 +22,7 @@ describe('truncate', () => {
   });
 
   test('CJK characters count as width 2', () => {
-    // '繁中' is 4 cols wide. maxWidth=3 → must truncate.
+    // '繁中abc' is 7 cols. maxWidth=4 → must truncate; budget=3 fits '繁'.
     expect(truncate('繁中abc', 4)).toBe('繁…');
     expect(truncate('繁中abc', 5)).toBe('繁中…');
     expect(truncate('繁中', 4)).toBe('繁中');
