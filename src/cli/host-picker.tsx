@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
-import { Box, Text } from 'ink';
-import { SelectList } from './components/select-list';
-import { HostInput } from './host-input';
-import { colors } from './components/theme';
+import React, { useRef, useState } from 'react';
+import { Box, Text, useInput } from 'ink';
+import { colors, icons } from './components/theme';
 import type { SshHost } from '../lib/ssh-config';
 
 export interface HostPickerProps {
@@ -10,9 +8,7 @@ export interface HostPickerProps {
   onSelect: (host: SshHost) => void;
 }
 
-type PickValue =
-  | { kind: 'host'; host: SshHost }
-  | { kind: 'manual' };
+const PLACEHOLDER = 'user@hostname  or  ssh-config-entry';
 
 function describeHost(h: SshHost): string | undefined {
   if (h.user && h.hostname) return `${h.user}@${h.hostname}`;
@@ -22,40 +18,47 @@ function describeHost(h: SshHost): string | undefined {
 }
 
 export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
-  const [mode, setMode] = useState<'picking' | 'typing'>('picking');
+  const inputRowIndex = hosts.length;
+  const [index, setIndex] = useState(0);
+  const [inputValue, setInputValue] = useState('');
+  const inputValueRef = useRef('');
 
-  if (mode === 'typing') {
-    return (
-      <HostInput
-        onSubmit={(name) => onSelect({ name })}
-        onCancel={() => setMode('picking')}
-      />
-    );
-  }
-
-  const items: Array<{
-    key: string;
-    label: string;
-    description?: string;
-    value: PickValue;
-  }> = [
-    ...hosts.map((h) => ({
-      key: h.name,
-      label: h.name,
-      description: describeHost(h),
-      value: { kind: 'host' as const, host: h },
-    })),
-    {
-      key: '__manual__',
-      label: '+ Enter manually…',
-      value: { kind: 'manual' as const },
-    },
-  ];
-
-  const onPick = (v: PickValue) => {
-    if (v.kind === 'manual') setMode('typing');
-    else onSelect(v.host);
+  const updateInput = (next: string) => {
+    inputValueRef.current = next;
+    setInputValue(next);
   };
+
+  useInput((input, key) => {
+    const onInput = index === inputRowIndex;
+
+    if (key.upArrow || (key.ctrl && input === 'p')) {
+      if (index > 0) setIndex(index - 1);
+      return;
+    }
+    if (key.downArrow || (key.ctrl && input === 'n')) {
+      if (index < inputRowIndex) setIndex(index + 1);
+      return;
+    }
+    if (key.return) {
+      if (onInput) {
+        const trimmed = inputValueRef.current.trim();
+        if (trimmed.length > 0) onSelect({ name: trimmed });
+      } else {
+        const host = hosts[index];
+        if (host) onSelect(host);
+      }
+      return;
+    }
+    if (!onInput) return;
+
+    if (key.backspace || key.delete) {
+      updateInput(inputValueRef.current.slice(0, -1));
+      return;
+    }
+    if (input && !key.ctrl && !key.meta) {
+      updateInput(inputValueRef.current + input);
+    }
+  });
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -64,11 +67,54 @@ export const HostPicker: React.FC<HostPickerProps> = ({ hosts, onSelect }) => {
           Select an <Text color={colors.primary}>SSH host</Text> to tunnel into.
         </Text>
         <Text dimColor>
-          These are loaded from ~/.ssh/config. Not listed? Choose "Enter
-          manually" below.
+          These are loaded from ~/.ssh/config. Or type one below.
         </Text>
       </Box>
-      <SelectList items={items} onSelect={onPick} />
+      <Box flexDirection="column">
+        {hosts.map((h, i) => {
+          const isActive = i === index;
+          const marker = isActive ? icons.pointerSmall : ' ';
+          const desc = describeHost(h);
+          return (
+            <Text key={h.name} color={isActive ? colors.primary : undefined}>
+              {marker} {h.name}
+              {desc ? <Text dimColor>  {desc}</Text> : null}
+            </Text>
+          );
+        })}
+        <InputRow
+          isActive={index === inputRowIndex}
+          value={inputValue}
+        />
+      </Box>
     </Box>
+  );
+};
+
+const InputRow: React.FC<{ isActive: boolean; value: string }> = ({
+  isActive,
+  value,
+}) => {
+  const marker = isActive ? icons.pointerSmall : ' ';
+  if (!isActive) {
+    if (value.length === 0) {
+      return <Text dimColor>{marker} + Enter manually…</Text>;
+    }
+    return (
+      <Text>
+        {marker} {value}
+      </Text>
+    );
+  }
+  return (
+    <Text color={colors.primary}>
+      {marker}{' '}
+      {value.length > 0 ? (
+        <Text color={colors.primary}>{value}</Text>
+      ) : (
+        <Text dimColor>{PLACEHOLDER}</Text>
+      )}
+      <Text dimColor>_</Text>
+    </Text>
   );
 };

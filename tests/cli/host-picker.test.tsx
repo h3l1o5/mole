@@ -43,31 +43,44 @@ describe('HostPicker', () => {
     expect(lastFrame()).toContain('bob@work');
   });
 
-  test('intro mentions ~/.ssh/config so user knows source of options', () => {
+  test('intro mentions ~/.ssh/config so the user knows the source', () => {
     const { lastFrame } = render(
       <HostPicker hosts={hosts} onSelect={() => {}} />,
     );
     expect(lastFrame()).toContain('~/.ssh/config');
   });
 
-  test('always shows a manual-entry sentinel below the host list', () => {
+  test('the manual-entry row is always present at the bottom', () => {
     const { lastFrame } = render(
       <HostPicker hosts={hosts} onSelect={() => {}} />,
     );
-    const out = lastFrame()!;
-    expect(out.toLowerCase()).toContain('enter manually');
+    // When unfocused the input row shows the sentinel hint.
+    expect(lastFrame()).toContain('Enter manually');
   });
 
-  test('sentinel is shown even when the ssh config is empty', () => {
-    const { lastFrame } = render(
+  test('navigating onto the input row reveals the typing placeholder', async () => {
+    const { stdin, lastFrame } = render(
+      <HostPicker hosts={hosts} onSelect={() => {}} />,
+    );
+    await settle();
+    for (let i = 0; i < 3; i++) {
+      stdin.write('\x1b[B');
+      await settle();
+    }
+    expect(lastFrame()).toContain('user@hostname');
+  });
+
+  test('input row is reachable and typeable when ssh config is empty', async () => {
+    const { stdin, lastFrame } = render(
       <HostPicker hosts={[]} onSelect={() => {}} />,
     );
-    const out = lastFrame()!;
-    expect(out.toLowerCase()).toContain('enter manually');
-    expect(out).toContain('~/.ssh/config');
+    await settle();
+    // With no hosts, the input row is index 0 and already focused.
+    expect(lastFrame()).toContain('user@hostname');
+    expect(lastFrame()).toContain('~/.ssh/config');
   });
 
-  test('enter selects first host', async () => {
+  test('Enter on first host submits that host', async () => {
     const box = { value: null as string | null };
     const { stdin } = render(
       <HostPicker
@@ -83,25 +96,42 @@ describe('HostPicker', () => {
     expect(box.value).toBe('prod');
   });
 
-  test('selecting the manual-entry sentinel switches to input mode', async () => {
+  test('typing while focused on the input row appears inline', async () => {
     const { stdin, lastFrame } = render(
       <HostPicker hosts={hosts} onSelect={() => {}} />,
     );
     await settle();
-    // Navigate past all three hosts, landing on the sentinel.
-    stdin.write('\x1b[B');
-    await settle();
-    stdin.write('\x1b[B');
-    await settle();
-    stdin.write('\x1b[B');
-    await settle();
-    stdin.write('\r');
-    await settle();
-    // HostInput's placeholder is the tell.
-    expect(lastFrame()).toContain('user@hostname');
+    // Move down past three hosts to land on the input row.
+    for (let i = 0; i < 3; i++) {
+      stdin.write('\x1b[B');
+      await settle();
+    }
+    for (const ch of 'alice@x') {
+      stdin.write(ch);
+      await settle();
+    }
+    expect(lastFrame()).toContain('alice@x');
   });
 
-  test('manual entry submits the typed host via onSelect', async () => {
+  test('typing while focused on a host row is ignored', async () => {
+    const box = { value: null as string | null };
+    const { stdin, lastFrame } = render(
+      <HostPicker
+        hosts={hosts}
+        onSelect={(h) => {
+          box.value = h.name;
+        }}
+      />,
+    );
+    await settle();
+    // Stay on first host row (prod) and try to type.
+    stdin.write('z');
+    await settle();
+    // The 'z' should not appear anywhere as input value.
+    expect(lastFrame()).not.toContain('z\n');
+  });
+
+  test('Enter on the input row submits the typed value via onSelect', async () => {
     const box = { value: null as string | null };
     const { stdin } = render(
       <HostPicker
@@ -112,35 +142,66 @@ describe('HostPicker', () => {
       />,
     );
     await settle();
-    // Empty list: first option is already the sentinel.
-    stdin.write('\r');
-    await settle();
-    for (const ch of 'alice@custom.example.com') {
+    // Empty list -> input row is the only row, already focused.
+    for (const ch of 'custom.example.com') {
       stdin.write(ch);
       await settle();
     }
     stdin.write('\r');
     await settle();
-    expect(box.value).toBe('alice@custom.example.com');
+    expect(box.value).toBe('custom.example.com');
   });
 
-  test('Esc in manual-entry returns to the picker', async () => {
+  test('Enter on an empty input row does nothing', async () => {
+    const box = { value: null as string | null };
+    const { stdin } = render(
+      <HostPicker
+        hosts={[]}
+        onSelect={(h) => {
+          box.value = h.name;
+        }}
+      />,
+    );
+    await settle();
+    stdin.write('\r');
+    await settle();
+    expect(box.value).toBe(null);
+  });
+
+  test('typed value persists when navigating away and back to input row', async () => {
     const { stdin, lastFrame } = render(
       <HostPicker hosts={hosts} onSelect={() => {}} />,
     );
     await settle();
-    stdin.write('\x1b[B');
+    for (let i = 0; i < 3; i++) {
+      stdin.write('\x1b[B');
+      await settle();
+    }
+    for (const ch of 'kept') {
+      stdin.write(ch);
+      await settle();
+    }
+    // Move up to a host row, then back down to the input row.
+    stdin.write('\x1b[A');
     await settle();
     stdin.write('\x1b[B');
     await settle();
-    stdin.write('\x1b[B');
+    expect(lastFrame()).toContain('kept');
+  });
+
+  test('backspace deletes from the typed value when focused on input row', async () => {
+    const { stdin, lastFrame } = render(
+      <HostPicker hosts={[]} onSelect={() => {}} />,
+    );
     await settle();
-    stdin.write('\r');
+    for (const ch of 'abc') {
+      stdin.write(ch);
+      await settle();
+    }
+    stdin.write('\x7f'); // backspace
     await settle();
-    // Now in input mode; press Esc to return.
-    stdin.write('\x1b');
-    await settle();
-    // Picker headline reappears.
-    expect(lastFrame()).toContain('SSH host');
+    const out = lastFrame()!;
+    expect(out).toContain('ab');
+    expect(out).not.toMatch(/abc/);
   });
 });
