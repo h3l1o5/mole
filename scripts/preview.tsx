@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { PreflightView, type PreflightStep } from '../src/cli/preflight';
+import { PreflightView } from '../src/cli/preflight';
 import { HostPicker } from '../src/cli/host-picker';
 import { ProfilePicker } from '../src/cli/profile-picker';
 import { ReviewStep } from '../src/cli/wizard/review';
