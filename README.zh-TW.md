@@ -172,6 +172,67 @@ export PATH="$HOME/.local/bin:$PATH"
 
 </details>
 
+## 開發
+
+`mole` 採用標準的「長壽 daemon + 輕量 client」架構（跟 `dockerd`/`docker`
+或 `tmux` server/client 同類）。日常開發兩邊都直接從 source 跑，不用
+build、不用 install。
+
+### 日常 workflow
+
+平常修改的幾乎都是 CLI。`./scripts/install.sh` 裝好的 daemon 一直在背景
+跑著，動它不到：
+
+```bash
+bun run dev:cli      # 直接用 Bun 跑 src/cli/index.tsx
+```
+
+改、存檔、Ctrl-C、重跑。Bun 原生吃 TypeScript/TSX，沒有 compile step。
+
+### 連 daemon 都要改的時候
+
+Dev daemon 跟 launchd 管的 prod daemon 會搶同一個 `/tmp/mole-clip.sock`。
+先停 prod、foreground 跑 dev，弄完恢復 prod：
+
+```bash
+bun run daemon:stop      # bootout launchd service
+bun run dev:daemon       # foreground 跑，log 印 stdout，Ctrl-C 殺
+# … 改 code 重跑 …
+bun run daemon:start     # 把 launchd service bootstrap 回去
+bun run daemon:status    # 確認真的活著
+```
+
+### 什麼時候該跑真正的 install
+
+`bun run dev:*` 跑的是 source。`./scripts/install.sh` 走的是
+`bun build --compile` 包出來的單檔 binary。兩者**不等價**：
+
+- Compile 後的 binary 在 `import.meta.dir`、`process.execPath` 這類路徑
+  上的行為跟 source 跑可能微妙地不一樣
+- launchd 管的 daemon 環境是乾淨的——沒有你 shell 的 PATH、沒有 export
+  的 env vars、working directory 也不一樣
+
+健康的節奏：平時 `dev:*` 迭代，commit / ship 之前跑一次
+`./scripts/install.sh` 驗 production path 還活著。
+
+### Power user：dev/prod 隔離
+
+Daemon 跟遠端的 `xclip` shim 都認 `MOLE_SOCKET`。如果你真的需要 dev daemon
+跟 prod daemon 同時活著（少見），兩邊都要設：
+
+```bash
+MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:daemon
+MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:cli
+# 遠端 shell 也要 export MOLE_SOCKET，xclip shim 才會對到正確的 socket
+```
+
+### Test 跟 typecheck
+
+```bash
+bun test
+bun run typecheck
+```
+
 ## 解除安裝
 
 ```bash

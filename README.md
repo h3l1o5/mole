@@ -184,6 +184,71 @@ Quit that Chrome window, or pick a different profile.
 
 </details>
 
+## Development
+
+`mole` follows the standard "long-running daemon + thin client" pattern
+(like `dockerd`/`docker` or `tmux` server/client). Day-to-day development
+runs each part directly from source — no build, no install.
+
+### Day-to-day workflow
+
+The CLI is what you'll iterate on most. The daemon installed by
+`./scripts/install.sh` keeps running in the background, so you don't need
+to touch it:
+
+```bash
+bun run dev:cli      # runs src/cli/index.tsx directly via Bun
+```
+
+Edit, save, Ctrl-C, re-run. Bun executes TypeScript/TSX natively, so
+there's no compile step.
+
+### When you also need to iterate on the daemon
+
+The dev daemon and the launchd-managed prod daemon both want
+`/tmp/mole-clip.sock`. Stop prod first, run dev foreground, restore prod
+when you're done:
+
+```bash
+bun run daemon:stop      # bootout the launchd service
+bun run dev:daemon       # foreground; logs to stdout, Ctrl-C kills it
+# … iterate …
+bun run daemon:start     # bootstrap the launchd service back
+bun run daemon:status    # confirm it's running
+```
+
+### When to run a real install
+
+`bun run dev:*` runs source directly. `./scripts/install.sh` produces a
+single-file binary via `bun build --compile`. They are not equivalent:
+
+- Compiled binaries can hit subtly different paths (`import.meta.dir`,
+  `process.execPath`) than source runs.
+- The launchd-managed daemon runs with a stripped environment — no shell
+  PATH, no exported vars, different working directory.
+
+Healthy rhythm: `dev:*` for iteration, `./scripts/install.sh` once before
+committing or shipping to verify the production path still works.
+
+### Power-user: dev/prod isolation
+
+The daemon and the remote `xclip` shim both honour `MOLE_SOCKET`. If you
+need a dev daemon to coexist with the prod one (rare), set the env var on
+both ends:
+
+```bash
+MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:daemon
+MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:cli
+# remote shell also needs MOLE_SOCKET set for the xclip shim to match
+```
+
+### Tests and typecheck
+
+```bash
+bun test
+bun run typecheck
+```
+
 ## Uninstall
 
 ```bash
