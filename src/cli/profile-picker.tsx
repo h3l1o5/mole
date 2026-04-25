@@ -9,6 +9,7 @@ import {
   type ProfileStatus,
 } from '../lib/chrome-profile';
 import { handleTextInputKey } from './wizard/text-input-keys';
+import { useExtraKeys } from './hooks/use-extra-keys';
 import type { PickerUiState } from './wizard/reducer';
 
 const PLACEHOLDER = 'Create new profile… (e.g. work-account)';
@@ -92,6 +93,13 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   React.useEffect(() => {
     if (!onInput) setError(null);
   }, [onInput]);
+
+  // Home / End: ink's useInput swallows these; pull them off the raw
+  // event emitter ourselves.
+  useExtraKeys(onInput, {
+    onHome: () => onUiChange({ cursor: 0 }),
+    onEnd: () => onUiChange({ cursor: ui.input.length }),
+  });
 
   useInput((input, key) => {
     if (onInput) {
