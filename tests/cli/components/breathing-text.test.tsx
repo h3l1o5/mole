@@ -1,10 +1,12 @@
 import React from 'react';
 import { test, expect, describe } from 'bun:test';
+import { Text } from 'ink';
 import { render } from 'ink-testing-library';
 import {
-  BreathingText,
   buildKeyframes,
   buildTriangle,
+  useBreathingColor,
+  type BreathingOptions,
 } from '../../../src/cli/components/breathing-text';
 
 describe('buildKeyframes', () => {
@@ -38,33 +40,32 @@ describe('buildTriangle', () => {
   });
 });
 
-describe('<BreathingText>', () => {
-  test('renders the children text', () => {
-    const { lastFrame, unmount } = render(
-      <BreathingText>READY TO TUNNEL</BreathingText>,
-    );
-    expect(lastFrame() ?? '').toContain('READY TO TUNNEL');
+const Probe: React.FC<{ opts?: BreathingOptions }> = ({ opts }) => {
+  const color = useBreathingColor(opts);
+  return <Text>{String(color)}</Text>;
+};
+
+describe('useBreathingColor', () => {
+  test('returns a hex color when not frozen', () => {
+    const { lastFrame, unmount } = render(<Probe />);
+    expect(lastFrame() ?? '').toMatch(/#[0-9a-fA-F]{6}/);
     unmount();
   });
 
-  test('frozen=true does not change frame across time', async () => {
+  test('returns undefined when frozen', () => {
+    const { lastFrame, unmount } = render(<Probe opts={{ frozen: true }} />);
+    expect(lastFrame() ?? '').toContain('undefined');
+    unmount();
+  });
+
+  test('frozen=true does not advance the color across time', async () => {
     const { lastFrame, unmount } = render(
-      <BreathingText frozen periodMs={50}>
-        X
-      </BreathingText>,
+      <Probe opts={{ frozen: true, periodMs: 50 }} />,
     );
     const f0 = lastFrame();
     await new Promise((r) => setTimeout(r, 120));
     const f1 = lastFrame();
     expect(f0).toBe(f1);
-    unmount();
-  });
-
-  test('frozen=true still shows the children', () => {
-    const { lastFrame, unmount } = render(
-      <BreathingText frozen>READY</BreathingText>,
-    );
-    expect(lastFrame() ?? '').toContain('READY');
     unmount();
   });
 });

@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Text } from 'ink';
+import { useEffect, useState, useMemo } from 'react';
 import { breathing } from './theme';
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -81,17 +80,3 @@ export function useBreathingColor({
   return keyframes[triangle[frame]!];
 }
 
-export interface BreathingTextProps extends BreathingOptions {
-  children: string;
-}
-
-export const BreathingText: React.FC<BreathingTextProps> = ({
-  children,
-  ...options
-}) => {
-  const color = useBreathingColor(options);
-  if (options.frozen) {
-    return <Text dimColor>{children}</Text>;
-  }
-  return <Text color={color}>{children}</Text>;
-};

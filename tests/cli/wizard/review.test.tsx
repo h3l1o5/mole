@@ -67,7 +67,7 @@ describe('<ReviewStep>', () => {
       />,
     );
     const frame = lastFrame() ?? '';
-    expect(frame).toContain('press ENTER');
+    expect(frame).toContain('press ENTER to tunnel');
     expect(frame).toMatch(/[╭╰]/);
   });
 
@@ -187,7 +187,7 @@ describe('<ReviewStep>', () => {
       />,
     );
     const frame = lastFrame() ?? '';
-    expect(frame).toContain('press ENTER');
+    expect(frame).toContain('press ENTER to tunnel');
     expect(frame).not.toMatch(/[╭╰╮╯]/);
   });
 

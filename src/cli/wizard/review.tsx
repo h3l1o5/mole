@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, decoration, icons } from '../components/theme';
+import { colorPhase, colors, decoration, icons } from '../components/theme';
 import { useBreathingColor } from '../components/breathing-text';
 import { describeHost, type SshHost } from '../../lib/ssh-config';
 import type { ProfileInfo, ProfileStatus } from '../../lib/chrome-profile';
@@ -83,8 +83,15 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Box>
 );
 
+const CTA_TEXT = 'press ENTER to tunnel';
+
 const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => {
-  const color = useBreathingColor({ periodMs: 5000 }) ?? colors.primary;
+  const color =
+    useBreathingColor({
+      baseColor: colorPhase.primary.base,
+      peakColor: colorPhase.primary.peak,
+      periodMs: 8000,
+    }) ?? colors.primary;
   if (bordered) {
     return (
       <Box
@@ -93,11 +100,11 @@ const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => {
         paddingX={1}
         alignSelf="flex-start"
       >
-        <Text color={color}>press ENTER</Text>
+        <Text color={color}>{CTA_TEXT}</Text>
       </Box>
     );
   }
-  return <Text color={color}>press ENTER</Text>;
+  return <Text color={color}>{CTA_TEXT}</Text>;
 };
 
 const WideReview: React.FC<ReviewStepProps> = ({

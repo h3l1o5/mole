@@ -44,6 +44,13 @@ export const spinnerFrames = [
   '⠏',
 ];
 
+// Two-endpoint color tokens for the useBreathingColor hook.
+// `breathing` fades dim ↔ bright (used to grab attention strongly).
+// `colorPhase` stays bright but shifts hue (subtler, less "anxious").
 export const breathing = {
   primary: { base: '#005f87', peak: '#5fffff' },
+} as const;
+
+export const colorPhase = {
+  primary: { base: '#5fffff', peak: '#5fff87' },
 } as const;
