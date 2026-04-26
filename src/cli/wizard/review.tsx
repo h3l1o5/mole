@@ -53,10 +53,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       <Box flexDirection="column">
         <Text dimColor={submitted}>
           Ready to{' '}
-          <Text color={submitted ? undefined : colors.primary}>tunnel</Text>.
+          <Text color={submitted ? undefined : colors.primary}>tunnel</Text>
         </Text>
         {!submitted ? (
-          <Text dimColor>Press enter to start. ← to go back.</Text>
+          <Text dimColor>enter start · ← back</Text>
         ) : null}
       </Box>
 
@@ -78,7 +78,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       <Box flexDirection="row">
         <Label>Profile</Label>
         {profile === 'skip' ? (
-          <Text dimColor>— skipped (Chrome will not be launched) —</Text>
+          <Text dimColor>skipped · Chrome will not launch</Text>
         ) : (
           <Box flexDirection="row" gap={2}>
             <Text bold dimColor={submitted}>
