@@ -10,7 +10,7 @@ export interface WizardFooterProps {
 const HINT_HOST = '↑↓ navigate · enter select · ctrl+c quit';
 const HINT_PROFILE =
   '↑↓ navigate · ← back · enter select · ctrl+c quit';
-const HINT_REVIEW = 'enter submit · ← back · ctrl+c quit';
+const HINT_REVIEW = '← back · ctrl+c quit';
 
 export const WizardFooter: React.FC<WizardFooterProps> = ({
   step,

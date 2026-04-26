@@ -43,8 +43,7 @@ export function buildTriangle(steps: number): number[] {
   return [...forward, ...backward];
 }
 
-export interface BreathingTextProps {
-  children: string;
+export interface BreathingOptions {
   baseColor?: string;
   peakColor?: string;
   periodMs?: number;
@@ -52,14 +51,16 @@ export interface BreathingTextProps {
   frozen?: boolean;
 }
 
-export const BreathingText: React.FC<BreathingTextProps> = ({
-  children,
+// Returns the current frame's hex color, or undefined when frozen so
+// the caller can render its own static fallback (e.g. dim text, plain
+// border color).
+export function useBreathingColor({
   baseColor = breathing.primary.base,
   peakColor = breathing.primary.peak,
   periodMs = 3000,
   steps = 8,
   frozen = false,
-}) => {
+}: BreathingOptions = {}): string | undefined {
   const keyframes = useMemo(
     () => buildKeyframes(baseColor, peakColor, steps),
     [baseColor, peakColor, steps],
@@ -76,8 +77,21 @@ export const BreathingText: React.FC<BreathingTextProps> = ({
     return () => clearInterval(id);
   }, [periodMs, triangle.length, frozen]);
 
-  if (frozen) {
+  if (frozen) return undefined;
+  return keyframes[triangle[frame]!];
+}
+
+export interface BreathingTextProps extends BreathingOptions {
+  children: string;
+}
+
+export const BreathingText: React.FC<BreathingTextProps> = ({
+  children,
+  ...options
+}) => {
+  const color = useBreathingColor(options);
+  if (options.frozen) {
     return <Text dimColor>{children}</Text>;
   }
-  return <Text color={keyframes[triangle[frame]!]}>{children}</Text>;
+  return <Text color={color}>{children}</Text>;
 };

@@ -44,14 +44,6 @@ export const spinnerFrames = [
   '⠏',
 ];
 
-// Arrow march cycles a horizontal build-up that points at a CTA.
-// Each frame is right-padded to 3 cells so the consumer Box never
-// reflows when the frame index changes; the trailing blank frame gives
-// the cycle a brief "breathe" before restarting. ▸ (U+25B8) is the
-// 1-cell variant — ▶ (U+25B6) measures as width=2 in string-width and
-// would wrap inside a 3-cell Box on real terminals.
-export const arrowMarchFrames = ['▸  ', '▸▸ ', '▸▸▸', '   '];
-
 export const breathing = {
   primary: { base: '#005f87', peak: '#5fffff' },
 } as const;

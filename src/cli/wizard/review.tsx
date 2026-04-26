@@ -1,8 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { colors, decoration, icons } from '../components/theme';
-import { BreathingText } from '../components/breathing-text';
-import { ArrowMarch } from '../components/arrow-march';
+import { useBreathingColor } from '../components/breathing-text';
 import { describeHost, type SshHost } from '../../lib/ssh-config';
 import type { ProfileInfo, ProfileStatus } from '../../lib/chrome-profile';
 import { buildWillLines } from './will';
@@ -58,11 +57,11 @@ const ICON_CELL_WIDTH = 2;
 const TITLE_TEXT = 'READY TO TUNNEL';
 
 const ReviewTitle: React.FC<{ submitted: boolean }> = ({ submitted }) => (
-  <BreathingText frozen={submitted} periodMs={10000}>
+  <Text color={submitted ? undefined : colors.primary} dimColor={submitted}>
     {submitted
       ? TITLE_TEXT
       : `${decoration.titleBarLeft} ${TITLE_TEXT} ${decoration.titleBarRight}`}
-  </BreathingText>
+  </Text>
 );
 
 const StatusIcon: React.FC<{ glyph: string; submitted?: boolean }> = ({
@@ -84,33 +83,22 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Box>
 );
 
-const CtaContent: React.FC = () => (
-  <>
-    <ArrowMarch />
-    <Text> </Text>
-    <Text color={colors.primary}>press ENTER</Text>
-  </>
-);
-
-const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => (
-  <Box flexDirection="column">
-    {bordered ? (
+const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => {
+  const color = useBreathingColor({ periodMs: 5000 }) ?? colors.primary;
+  if (bordered) {
+    return (
       <Box
         borderStyle="round"
-        borderColor={colors.primary}
+        borderColor={color}
         paddingX={1}
         alignSelf="flex-start"
       >
-        <CtaContent />
+        <Text color={color}>press ENTER</Text>
       </Box>
-    ) : (
-      <Box flexDirection="row">
-        <CtaContent />
-      </Box>
-    )}
-    <Text dimColor>← back</Text>
-  </Box>
-);
+    );
+  }
+  return <Text color={color}>press ENTER</Text>;
+};
 
 const WideReview: React.FC<ReviewStepProps> = ({
   host,
