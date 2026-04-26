@@ -32,7 +32,7 @@ const profileStatusColor = (s: ProfileStatus): string | undefined => {
   return undefined;
 };
 
-const LABEL_WIDTH = 9; // 'Profile' + 2 spaces
+const LABEL_WIDTH = 'Profile'.length + 2;
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box width={LABEL_WIDTH}>
