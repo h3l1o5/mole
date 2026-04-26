@@ -162,6 +162,23 @@ const sampleHosts: SshHost[] = [
 const hostUi = { index: 0, input: '', cursor: 0 };
 const noopUi = (_p: unknown) => {};
 
+// Stateful wrapper for picker preview cases that need onUiChange to
+// actually mutate ui (so initial-focus alignment is observable).
+const StatefulProfilePicker: React.FC<
+  Omit<React.ComponentProps<typeof ProfilePicker>, 'onUiChange'> & {
+    initialUi: { index: number; input: string; cursor: number };
+  }
+> = ({ initialUi, ...rest }) => {
+  const [ui, setUi] = React.useState(initialUi);
+  return (
+    <ProfilePicker
+      {...rest}
+      ui={ui}
+      onUiChange={(p) => setUi((u) => ({ ...u, ...p }))}
+    />
+  );
+};
+
 const hostPickerCases: Case[] = [
   {
     view: 'host-picker',
@@ -231,6 +248,35 @@ const profilePickerCases: Case[] = [
           ui={{ index: 3, input: '', cursor: 0 }} // index 0+1 profiles, 2 input, 3 skip
           onUiChange={noopUi}
           onPick={() => {}}
+        />,
+      ),
+  },
+  {
+    view: 'profile-picker',
+    name: 'back-nav: selected=test2 → cursor aligns to that row',
+    run: () =>
+      snapshot(
+        <StatefulProfilePicker
+          profiles={[
+            { name: 'test', path: '/p/test', status: 'free' },
+            { name: 'test2', path: '/p/test2', status: 'free' },
+          ]}
+          initialUi={{ index: 2, input: '', cursor: 0 }} // stale: was on input row
+          onPick={() => {}}
+          selected={{ name: 'test2', path: '/p/test2', status: 'free' }}
+        />,
+      ),
+  },
+  {
+    view: 'profile-picker',
+    name: 'back-nav: selected=skip → cursor on Skip row',
+    run: () =>
+      snapshot(
+        <StatefulProfilePicker
+          profiles={[{ name: 'work', path: '/p/work', status: 'free' }]}
+          initialUi={{ index: 0, input: '', cursor: 0 }}
+          onPick={() => {}}
+          selected="skip"
         />,
       ),
   },
@@ -384,8 +430,40 @@ const wizardCases: Case[] = [
               pid: 4242,
             }}
             submitted
+            innerWidth={74}
           />
         </WizardFrame>,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'narrow review @ 48 inner cols',
+    run: () =>
+      snapshot(
+        <ReviewStep
+          host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+          profile={{
+            name: 'agent',
+            path: '/p/agent',
+            status: 'reusable',
+            pid: 4242,
+          }}
+          submitted={false}
+          innerWidth={48}
+        />,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'narrow review skip Chrome @ 48 inner cols',
+    run: () =>
+      snapshot(
+        <ReviewStep
+          host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+          profile="skip"
+          submitted={false}
+          innerWidth={48}
+        />,
       ),
   },
 ];
