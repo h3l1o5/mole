@@ -82,11 +82,12 @@ mole 第一版功能完整、195 個 unit test 全綠、`tsc --noEmit` 乾淨。
 - **保留例外**：邏輯只有 1–2 行、抽出來反而拗
 - **判準**：這函式需要 mock `Bun.spawn` / `ssh` 才能單測嗎？需要 → 抽；不需要 → 維持
 
-### R5 — 肥檔拆檔
+### R5 — single-responsibility 違反 → 拆
 
-- **動**：檔案職責超過一個（明顯違反 single purpose），拆檔
+- **動**：任一單元（檔 / 函式 / 類別 / hook / component）職責超過一個就拆
 - **不**訂行數 threshold（行數只是 signal）
-- **判準**：「這個檔做什麼？」回答需要 `... and ...` → 拆
+- **判準**：「這個單元做什麼？」回答需要 `... and ...` → 拆
+- **保留例外**：拆出來需要把大量 state plumbing 過介面（例如要傳 5 個以上的 closure / ref），表示其實是同一個 multi-step 邏輯不是兩個職責 → 留，但 commit message 標註「拆分考慮過、退回」
 
 ### R6 — 命名修正
 
