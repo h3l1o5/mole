@@ -52,6 +52,19 @@ describe('PreflightView', () => {
     unmount();
   });
 
+  test('error sub-row aligns with the main label start (5 leading cells)', () => {
+    const { lastFrame, unmount } = render(
+      <PreflightView
+        steps={[{ id: 'r', label: 'L', state: 'error', error: 'ERR' }]}
+      />,
+    );
+    const out = lastFrame()!;
+    // outer paddingLeft 2 + marker cell 2 + gap 1 = label starts col 5.
+    // error sub-row indent must reach the same column.
+    expect(out).toMatch(/^ {5}ERR$/m);
+    unmount();
+  });
+
   test('warning shows the warning icon under an ok step', () => {
     const { lastFrame, unmount } = render(
       <PreflightView
