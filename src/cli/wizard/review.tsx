@@ -1,6 +1,8 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors } from '../components/theme';
+import { colors, icons } from '../components/theme';
+import { BreathingText } from '../components/breathing-text';
+import { ArrowMarch } from '../components/arrow-march';
 import { describeHost, type SshHost } from '../../lib/ssh-config';
 import type { ProfileInfo, ProfileStatus } from '../../lib/chrome-profile';
 import { buildWillLines } from './will';
@@ -53,6 +55,21 @@ const LABEL_WIDTH = 'Profile'.length + 2;
 // linebreak-per-field layout at or below the threshold.
 const NARROW_THRESHOLD = 56;
 
+const ICON_CELL_WIDTH = 2;
+
+const StatusIcon: React.FC<{ glyph: string; dim?: boolean }> = ({
+  glyph,
+  dim,
+}) => (
+  <Box width={ICON_CELL_WIDTH}>
+    <Text color={dim ? undefined : colors.primary} dimColor={dim}>
+      {glyph}
+    </Text>
+  </Box>
+);
+
+const StatusIconSpacer: React.FC = () => <Box width={ICON_CELL_WIDTH} />;
+
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box width={LABEL_WIDTH}>
     <Text dimColor>{children}</Text>
@@ -73,15 +90,26 @@ const Header: React.FC<Pick<ReviewStepProps, 'submitted'>> = ({ submitted }) => 
   </Box>
 );
 
-const WideReview: React.FC<ReviewStepProps> = ({ host, profile, submitted }) => {
+const WideReview: React.FC<ReviewStepProps> = ({
+  host,
+  profile,
+  submitted,
+}) => {
   const desc = describeHost(host);
   const willLines = buildWillLines({ host, profile });
   return (
     <Box flexDirection="column" gap={1}>
-      <Header submitted={submitted} />
+      <Box flexDirection="column">
+        {submitted ? (
+          <Text dimColor>READY TO TUNNEL</Text>
+        ) : (
+          <BreathingText>{'▌ READY TO TUNNEL ▐'}</BreathingText>
+        )}
+      </Box>
 
       <Box flexDirection="column">
         <Box flexDirection="row">
+          <StatusIcon glyph={icons.tick} dim={submitted} />
           <Label>Host</Label>
           <Text bold dimColor={submitted}>
             {host.name}
@@ -89,6 +117,7 @@ const WideReview: React.FC<ReviewStepProps> = ({ host, profile, submitted }) => 
         </Box>
         {desc ? (
           <Box flexDirection="row">
+            <StatusIconSpacer />
             <Label>{' '}</Label>
             <Text dimColor>{desc}</Text>
           </Box>
@@ -96,6 +125,7 @@ const WideReview: React.FC<ReviewStepProps> = ({ host, profile, submitted }) => 
       </Box>
 
       <Box flexDirection="row">
+        <StatusIcon glyph={icons.tick} dim={submitted} />
         <Label>Profile</Label>
         {profile === 'skip' ? (
           <Text dimColor>skipped · Chrome will not launch</Text>
@@ -119,11 +149,32 @@ const WideReview: React.FC<ReviewStepProps> = ({ host, profile, submitted }) => 
       <Box flexDirection="column">
         {willLines.map((line, i) => (
           <Box key={i} flexDirection="row">
+            {i === 0 ? (
+              <StatusIcon glyph="→" dim={submitted} />
+            ) : (
+              <StatusIconSpacer />
+            )}
             <Label>{i === 0 ? 'Will' : ' '}</Label>
             <Text dimColor={submitted}>{`· ${line}`}</Text>
           </Box>
         ))}
       </Box>
+
+      {!submitted ? (
+        <Box flexDirection="column">
+          <Box
+            borderStyle="round"
+            borderColor={colors.primary}
+            paddingX={1}
+            alignSelf="flex-start"
+          >
+            <ArrowMarch />
+            <Text> </Text>
+            <Text color={colors.primary}>press ENTER</Text>
+          </Box>
+          <Text dimColor>← back</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 };

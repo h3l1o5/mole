@@ -48,20 +48,65 @@ describe('<ReviewStep>', () => {
     expect(frame).not.toContain('launch Chrome');
   });
 
-  test('submitted=true hides the hint and still shows fields', () => {
+  test('submitted=true hides the CTA and still shows fields', () => {
     const { lastFrame } = render(
-      <ReviewStep host={HOST} profile={PROFILE} submitted />,
+      <ReviewStep host={HOST} profile={PROFILE} submitted innerWidth={70} />,
     );
     const frame = lastFrame() ?? '';
     expect(frame).toContain('vbm');
-    expect(frame).not.toContain('enter start');
+    expect(frame).not.toContain('press ENTER');
   });
 
-  test('hint phrase still renders intact when not submitted', () => {
+  test('wide path CTA shows "press ENTER" inside a bordered box', () => {
     const { lastFrame } = render(
-      <ReviewStep host={HOST} profile={PROFILE} submitted={false} />,
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={70}
+      />,
     );
-    expect(lastFrame() ?? '').toContain('enter start · ← back');
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('press ENTER');
+    expect(frame).toMatch(/[╭╰]/);
+  });
+
+  test('wide path renders ✓ status icons for Host and Profile', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={70}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    const tickCount = (frame.match(/✓/g) ?? []).length;
+    expect(tickCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('wide path renders → status icon for Will', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={70}
+      />,
+    );
+    expect(lastFrame() ?? '').toContain('→');
+  });
+
+  test('wide path title is all caps READY TO TUNNEL with decorative bars', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={70}
+      />,
+    );
+    expect(lastFrame() ?? '').toContain('▌ READY TO TUNNEL ▐');
   });
 
   test('narrow path uses short status keyword, no em-dash phrase', () => {
