@@ -4,7 +4,7 @@ import {
   colors,
   icons,
   spinnerFrames,
-  breathing,
+  colorPhase,
 } from '../../../src/cli/components/theme';
 
 describe('theme', () => {
@@ -35,8 +35,8 @@ describe('theme', () => {
     expect(spinnerFrames.length).toBeGreaterThan(4);
   });
 
-  test('breathing exposes a primary keyframe pair as 6-digit hex strings', () => {
-    expect(breathing.primary.base).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(breathing.primary.peak).toMatch(/^#[0-9a-fA-F]{6}$/);
+  test('colorPhase exposes a primary keyframe pair as 6-digit hex strings', () => {
+    expect(colorPhase.primary.base).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(colorPhase.primary.peak).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 });

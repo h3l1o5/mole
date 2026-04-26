@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { breathing } from './theme';
+import { colorPhase } from './theme';
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace('#', '');
@@ -42,27 +42,29 @@ export function buildTriangle(steps: number): number[] {
   return [...forward, ...backward];
 }
 
-export interface BreathingOptions {
-  baseColor?: string;
-  peakColor?: string;
+export interface PhaseColorToken {
+  readonly base: string;
+  readonly peak: string;
+}
+
+export interface PhaseColorOptions {
+  token?: PhaseColorToken;
   periodMs?: number;
   steps?: number;
   frozen?: boolean;
 }
 
 // Returns the current frame's hex color, or undefined when frozen so
-// the caller can render its own static fallback (e.g. dim text, plain
-// border color).
-export function useBreathingColor({
-  baseColor = breathing.primary.base,
-  peakColor = breathing.primary.peak,
+// the caller can render its own static fallback.
+export function usePhaseColor({
+  token = colorPhase.primary,
   periodMs = 3000,
   steps = 8,
   frozen = false,
-}: BreathingOptions = {}): string | undefined {
+}: PhaseColorOptions = {}): string | undefined {
   const keyframes = useMemo(
-    () => buildKeyframes(baseColor, peakColor, steps),
-    [baseColor, peakColor, steps],
+    () => buildKeyframes(token.base, token.peak, steps),
+    [token.base, token.peak, steps],
   );
   const triangle = useMemo(() => buildTriangle(steps), [steps]);
   const [frame, setFrame] = useState(0);
@@ -79,4 +81,3 @@ export function useBreathingColor({
   if (frozen) return undefined;
   return keyframes[triangle[frame]!];
 }
-

@@ -5,9 +5,9 @@ import { render } from 'ink-testing-library';
 import {
   buildKeyframes,
   buildTriangle,
-  useBreathingColor,
-  type BreathingOptions,
-} from '../../../src/cli/components/breathing-text';
+  usePhaseColor,
+  type PhaseColorOptions,
+} from '../../../src/cli/components/phase-color';
 
 describe('buildKeyframes', () => {
   test('start and end match base / peak', () => {
@@ -40,12 +40,12 @@ describe('buildTriangle', () => {
   });
 });
 
-const Probe: React.FC<{ opts?: BreathingOptions }> = ({ opts }) => {
-  const color = useBreathingColor(opts);
-  return <Text>{String(color)}</Text>;
+const Probe: React.FC<{ opts?: PhaseColorOptions }> = ({ opts }) => {
+  const color = usePhaseColor(opts);
+  return <Text>{color ?? 'FROZEN'}</Text>;
 };
 
-describe('useBreathingColor', () => {
+describe('usePhaseColor', () => {
   test('returns a hex color when not frozen', () => {
     const { lastFrame, unmount } = render(<Probe />);
     expect(lastFrame() ?? '').toMatch(/#[0-9a-fA-F]{6}/);
@@ -54,7 +54,7 @@ describe('useBreathingColor', () => {
 
   test('returns undefined when frozen', () => {
     const { lastFrame, unmount } = render(<Probe opts={{ frozen: true }} />);
-    expect(lastFrame() ?? '').toContain('undefined');
+    expect(lastFrame() ?? '').toContain('FROZEN');
     unmount();
   });
 

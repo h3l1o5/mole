@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colorPhase, colors, decoration, icons } from '../components/theme';
-import { useBreathingColor } from '../components/breathing-text';
+import { colors, decoration, icons } from '../components/theme';
+import { usePhaseColor } from '../components/phase-color';
 import { describeHost, type SshHost } from '../../lib/ssh-config';
 import type { ProfileInfo, ProfileStatus } from '../../lib/chrome-profile';
 import { buildWillLines } from './will';
@@ -86,12 +86,7 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const CTA_TEXT = 'press ENTER to tunnel';
 
 const CtaBlock: React.FC = () => {
-  const color =
-    useBreathingColor({
-      baseColor: colorPhase.primary.base,
-      peakColor: colorPhase.primary.peak,
-      periodMs: 8000,
-    }) ?? colors.primary;
+  const color = usePhaseColor({ periodMs: 8000 }) ?? colors.primary;
   return (
     <Box alignSelf="flex-start">
       <Text backgroundColor={color} color="black" bold>
