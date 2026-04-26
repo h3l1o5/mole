@@ -1,14 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Box, Text, useInput } from 'ink';
 import { colors, icons } from './components/theme';
-import { useProfiles } from './hooks/use-profiles';
+import { TextInput } from './components/text-input';
 import {
-  scanProfiles,
   createProfile,
   validateProfileName,
   type ProfileInfo,
   type ProfileStatus,
 } from '../lib/chrome-profile';
+import { handleTextInputKey } from './wizard/text-input-keys';
+import { useExtraKeys } from './hooks/use-extra-keys';
+import type { PickerUiState } from './wizard/reducer';
 
 const PLACEHOLDER = 'Create new profile… (e.g. work-account)';
 
@@ -38,74 +40,98 @@ const statusColor = (s: ProfileStatus): string | undefined => {
   }
 };
 
+// Sentinel for the "Skip Chrome" row. Position: always last (after manual entry).
+type ListRow =
+  | { kind: 'profile'; profile: ProfileInfo }
+  | { kind: 'manualInput' }
+  | { kind: 'skip' };
+
 export interface ProfilePickerProps {
-  onSelect: (profile: ProfileInfo) => void;
-  scanner?: () => Promise<ProfileInfo[]>;
+  profiles: ProfileInfo[];
+  ui: PickerUiState;
+  onUiChange: (patch: Partial<PickerUiState>) => void;
+  onPick: (selection: ProfileInfo | 'skip') => void;
   creator?: (name: string) => ProfileInfo;
-  intervalMs?: number;
 }
 
 export const ProfilePicker: React.FC<ProfilePickerProps> = ({
-  onSelect,
-  scanner = scanProfiles,
+  profiles,
+  ui,
+  onUiChange,
+  onPick,
   creator = createProfile,
-  intervalMs = 1000,
 }) => {
-  const profiles = useProfiles(scanner, intervalMs);
+  const rows: ListRow[] = [
+    ...profiles.map((p) => ({ kind: 'profile' as const, profile: p })),
+    { kind: 'manualInput' as const },
+    { kind: 'skip' as const },
+  ];
   const inputRowIndex = profiles.length;
-  const [index, setIndex] = useState(0);
-  const [inputValue, setInputValue] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const inputValueRef = useRef('');
-  const initialFocusSet = useRef(false);
+  const skipRowIndex = inputRowIndex + 1;
+  const onInput = ui.index === inputRowIndex;
+  const initialFocusSet = React.useRef(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const isDisabled = (i: number): boolean =>
-    i < profiles.length && profiles[i]!.status === 'busy';
-
-  // First time profiles arrive (or remain empty after a real scan), park
-  // the cursor on the first non-busy row so the user doesn't start on a
-  // disabled item. After that we just clamp on out-of-range changes so
-  // we don't yank the cursor away from where the user put it.
-  useEffect(() => {
-    if (!initialFocusSet.current) {
-      const firstEnabled = profiles.findIndex((p) => p.status !== 'busy');
-      setIndex(firstEnabled === -1 ? profiles.length : firstEnabled);
-      initialFocusSet.current = true;
-      return;
-    }
-    if (index > inputRowIndex) setIndex(inputRowIndex);
-  }, [profiles.length, inputRowIndex, index]);
-
-  // Keep the validation error from re-surprising the user when they
-  // wander away from the input row.
-  useEffect(() => {
-    if (index !== inputRowIndex) setError(null);
-  }, [index, inputRowIndex]);
-
-  const updateInput = (next: string) => {
-    inputValueRef.current = next;
-    setInputValue(next);
-    setError(null);
+  const isDisabled = (i: number): boolean => {
+    const r = rows[i];
+    return r?.kind === 'profile' && r.profile.status === 'busy';
   };
 
+  React.useEffect(() => {
+    if (!initialFocusSet.current) {
+      // Park cursor on first non-busy row so the user doesn't start on
+      // a disabled item. After this we just clamp on out-of-range.
+      const firstEnabled = profiles.findIndex((p) => p.status !== 'busy');
+      const idx = firstEnabled === -1 ? inputRowIndex : firstEnabled;
+      initialFocusSet.current = true;
+      if (ui.index !== idx) onUiChange({ index: idx });
+      return;
+    }
+    if (ui.index > skipRowIndex) onUiChange({ index: skipRowIndex });
+  }, [profiles.length, inputRowIndex, skipRowIndex, ui.index, onUiChange]);
+
+  React.useEffect(() => {
+    if (!onInput) setError(null);
+  }, [onInput]);
+
+  // Home / End: ink's useInput swallows these; pull them off the raw
+  // event emitter ourselves.
+  useExtraKeys(onInput, {
+    onHome: () => onUiChange({ cursor: 0 }),
+    onEnd: () => onUiChange({ cursor: ui.input.length }),
+  });
+
   useInput((input, key) => {
-    const onInput = index === inputRowIndex;
+    if (onInput) {
+      const next = handleTextInputKey(
+        { value: ui.input, cursor: ui.cursor },
+        input,
+        key,
+      );
+      if (next) {
+        onUiChange({ input: next.value, cursor: next.cursor });
+        setError(null);
+        return;
+      }
+    }
 
     if (key.upArrow || (key.ctrl && input === 'p')) {
-      let i = index - 1;
+      let i = ui.index - 1;
       while (i >= 0 && isDisabled(i)) i--;
-      if (i >= 0) setIndex(i);
+      if (i >= 0) onUiChange({ index: i });
       return;
     }
     if (key.downArrow || (key.ctrl && input === 'n')) {
-      let i = index + 1;
-      while (i <= inputRowIndex && isDisabled(i)) i++;
-      if (i <= inputRowIndex) setIndex(i);
+      let i = ui.index + 1;
+      while (i <= skipRowIndex && isDisabled(i)) i++;
+      if (i <= skipRowIndex) onUiChange({ index: i });
       return;
     }
     if (key.return) {
-      if (onInput) {
-        const trimmed = inputValueRef.current.trim();
+      const row = rows[ui.index];
+      if (!row) return;
+      if (row.kind === 'manualInput') {
+        const trimmed = ui.input.trim();
         if (trimmed.length === 0) return;
         const validationError = validateProfileName(trimmed);
         if (validationError) {
@@ -114,24 +140,18 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
         }
         try {
           const info = creator(trimmed);
-          onSelect(info);
+          onPick(info);
         } catch (e) {
           setError(e instanceof Error ? e.message : String(e));
         }
-      } else {
-        const profile = profiles[index];
-        if (profile && profile.status !== 'busy') onSelect(profile);
+        return;
       }
-      return;
-    }
-    if (!onInput) return;
-
-    if (key.backspace || key.delete) {
-      updateInput(inputValueRef.current.slice(0, -1));
-      return;
-    }
-    if (input && !key.ctrl && !key.meta) {
-      updateInput(inputValueRef.current + input);
+      if (row.kind === 'skip') {
+        onPick('skip');
+        return;
+      }
+      // profile
+      if (row.profile.status !== 'busy') onPick(row.profile);
     }
   });
 
@@ -142,12 +162,12 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           Select a <Text color={colors.primary}>Chrome profile</Text> to launch.
         </Text>
         <Text dimColor>
-          These live in ~/.chrome-profiles/. Or create one below.
+          These live in ~/.chrome-profiles/. Or create / skip below.
         </Text>
       </Box>
       <Box flexDirection="column">
         {profiles.map((p, i) => {
-          const isActive = i === index;
+          const isActive = i === ui.index;
           const marker = isActive ? icons.pointerSmall : ' ';
           const sColor = statusColor(p.status);
           return (
@@ -163,10 +183,12 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
             </Text>
           );
         })}
-        <InputRow
-          isActive={index === inputRowIndex}
-          value={inputValue}
+        <ManualInputRow
+          active={onInput}
+          value={ui.input}
+          cursor={ui.cursor}
         />
+        <SkipRow active={ui.index === skipRowIndex} />
         {error ? (
           <Text color={colors.error}>  {icons.warning} {error}</Text>
         ) : null}
@@ -175,30 +197,33 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   );
 };
 
-const InputRow: React.FC<{ isActive: boolean; value: string }> = ({
-  isActive,
-  value,
-}) => {
-  const marker = isActive ? icons.pointerSmall : ' ';
-  if (!isActive) {
-    if (value.length === 0) {
-      return <Text dimColor>{marker} + Create new profile…</Text>;
-    }
-    return (
-      <Text>
-        {marker} {value}
-      </Text>
-    );
+const ManualInputRow: React.FC<{
+  active: boolean;
+  value: string;
+  cursor: number;
+}> = ({ active, value, cursor }) => {
+  const marker = active ? icons.pointerSmall : ' ';
+  if (!active && value.length === 0) {
+    return <Text dimColor>{marker} + Create new profile…</Text>;
   }
   return (
-    <Text color={colors.primary}>
+    <Text color={active ? colors.primary : undefined}>
       {marker}{' '}
-      {value.length > 0 ? (
-        <Text color={colors.primary}>{value}</Text>
-      ) : (
-        <Text dimColor>{PLACEHOLDER}</Text>
-      )}
-      <Text dimColor>_</Text>
+      <TextInput
+        value={value}
+        cursor={cursor}
+        isActive={active}
+        placeholder={PLACEHOLDER}
+      />
+    </Text>
+  );
+};
+
+const SkipRow: React.FC<{ active: boolean }> = ({ active }) => {
+  const marker = active ? icons.pointerSmall : ' ';
+  return (
+    <Text color={active ? colors.primary : undefined}>
+      {marker} — Skip Chrome —
     </Text>
   );
 };

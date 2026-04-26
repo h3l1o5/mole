@@ -37,12 +37,18 @@ export interface PreflightViewProps {
   steps: PreflightStep[];
 }
 
+// Two trailing spaces: some terminal fonts render the marker glyph (✓
+// / ✘ / ·) wider than its cell, swallowing a single trailing space.
+// One col is layout, the other is visual breathing room.
+const MARKER_GAP = '  ';
+
 export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
   <Box flexDirection="column" paddingLeft={2}>
     {steps.map((s) => (
       <Box key={s.id} flexDirection="column">
-        <Box gap={1}>
+        <Box>
           <Marker state={s.state} />
+          <Text>{MARKER_GAP}</Text>
           <Text
             color={labelColor(s.state)}
             dimColor={s.state === 'pending'}
@@ -56,8 +62,9 @@ export const PreflightView: React.FC<PreflightViewProps> = ({ steps }) => (
           </Box>
         ) : null}
         {s.warning ? (
-          <Box paddingLeft={2} gap={1}>
+          <Box paddingLeft={2}>
             <Text color={colors.warning}>{icons.warning}</Text>
+            <Text>{MARKER_GAP}</Text>
             <Text color={colors.warning}>{s.warning}</Text>
           </Box>
         ) : null}

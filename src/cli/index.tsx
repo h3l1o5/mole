@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { render } from 'ink';
-import { HostPicker } from './host-picker';
-import { ProfilePicker } from './profile-picker';
+import { Wizard } from './wizard';
+import type { WizardState, WizardSubmitPayload } from './wizard';
 import { PreflightView, type PreflightStep } from './preflight';
-import { loadSshHosts, type SshHost } from '../lib/ssh-config';
+import type { SshHost } from '../lib/ssh-config';
 import type { ProfileInfo } from '../lib/chrome-profile';
 import { launchChrome } from '../lib/chrome-launcher';
 import { isDaemonHealthy } from '../lib/daemon-health';
@@ -14,80 +14,19 @@ import { spawnSsh } from '../lib/ssh-session';
 import { buildNonInteractiveSshArgs } from '../lib/ssh-spawn';
 import { checkOnce } from './watchdog';
 
-async function pickHost(): Promise<SshHost | null> {
-  const hosts = loadSshHosts();
-  return new Promise((resolve) => {
-    let picked = false;
-    const app = render(
-      <HostPicker
-        hosts={hosts}
-        onSelect={(h) => {
-          picked = true;
-          app.unmount();
-          resolve(h);
-        }}
-      />,
-    );
-    app.waitUntilExit().then(() => {
-      if (!picked) resolve(null);
-    });
-  });
-}
-
-async function pickProfile(): Promise<ProfileInfo | null> {
-  return new Promise((resolve) => {
-    let picked = false;
-    const app = render(
-      <ProfilePicker
-        onSelect={(p) => {
-          picked = true;
-          app.unmount();
-          resolve(p);
-        }}
-      />,
-    );
-    app.waitUntilExit().then(() => {
-      if (!picked) resolve(null);
-    });
-  });
-}
-
 interface PreflightRunResult {
   socatPid?: number;
   ok: boolean;
 }
 
-async function runPreflightWithUi(
-  host: SshHost,
-  profile: ProfileInfo,
+async function runPreflightSteps(
+  payload: WizardSubmitPayload,
+  setStep: (id: string, patch: Partial<PreflightStep>) => void,
 ): Promise<PreflightRunResult> {
-  let updateSteps: (fn: (s: PreflightStep[]) => PreflightStep[]) => void = () => {};
-  let unmountApp: () => void = () => {};
+  const { host, profile } = payload;
+  const skipChrome = profile === 'skip';
 
-  const Container: React.FC = () => {
-    const [steps, setSteps] = useState<PreflightStep[]>([
-      { id: 'daemon', label: 'Mac daemon', state: 'pending' },
-      { id: 'remote', label: `Remote preflight (${host.name})`, state: 'pending' },
-      { id: 'chrome', label: `Chrome (profile: ${profile.name})`, state: 'pending' },
-    ]);
-    updateSteps = setSteps;
-    return <PreflightView steps={steps} />;
-  };
-
-  const app = render(<Container />);
-  unmountApp = () => app.unmount();
-
-  const setStep = (id: string, patch: Partial<PreflightStep>) => {
-    updateSteps((steps) =>
-      steps.map((s) => (s.id === id ? { ...s, ...patch } : s)),
-    );
-  };
-
-  // Order matters: reversible checks (daemon, remote) run before the
-  // Chrome launch, which has a user-visible side effect. If any check
-  // fails, we bail without spawning Chrome.
-
-  // Step 1: Daemon
+  // Daemon
   setStep('daemon', { state: 'running' });
   const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';
   const healthy = await isDaemonHealthy(socketPath);
@@ -97,54 +36,125 @@ async function runPreflightWithUi(
       error:
         'Daemon not responding. Run: launchctl kickstart -k gui/$UID/com.h3l1o5.mole-daemon',
     });
-    await new Promise((r) => setTimeout(r, 300));
-    unmountApp();
     return { ok: false };
   }
   setStep('daemon', { state: 'ok' });
 
-  // Step 2: Remote preflight
+  // Remote preflight
   setStep('remote', { state: 'running' });
   const r = await runPreflight(host.name);
   const warning = r.warnings.length > 0 ? r.warnings.join(' ') : undefined;
   if (!r.ok) {
     setStep('remote', { state: 'error', error: r.errors.join('; '), warning });
-    await new Promise((x) => setTimeout(x, 300));
-    unmountApp();
     return { ok: false };
   }
   setStep('remote', { state: 'ok', warning });
-  if (warning) {
-    // give user a visible beat to read the warning before moving on
-    await new Promise((x) => setTimeout(x, 1500));
+  if (warning) await new Promise((x) => setTimeout(x, 1500));
+
+  if (!skipChrome) {
+    setStep('chrome', { state: 'running' });
+    const p = profile as ProfileInfo;
+    if (p.status === 'reusable') {
+      setStep('chrome', { state: 'ok', label: `Chrome (reusing pid ${p.pid})` });
+    } else {
+      launchChrome({ profilePath: p.path });
+      await new Promise((x) => setTimeout(x, 1500));
+      setStep('chrome', { state: 'ok' });
+    }
   }
 
-  // Step 3: Chrome (last — has user-visible side effects)
-  setStep('chrome', { state: 'running' });
-  if (profile.status === 'reusable') {
-    setStep('chrome', { state: 'ok', label: `Chrome (reusing pid ${profile.pid})` });
-  } else {
-    launchChrome({ profilePath: profile.path });
-    // give Chrome a moment to open the debug port
-    await new Promise((x) => setTimeout(x, 1500));
-    setStep('chrome', { state: 'ok' });
-  }
-
-  // small pause so user sees all green
-  await new Promise((x) => setTimeout(x, 200));
-  unmountApp();
   return { ok: true, socatPid: r.socatPid };
 }
 
+const initialPreflightSteps = (
+  host: SshHost,
+  profile: ProfileInfo | 'skip',
+): PreflightStep[] => {
+  const steps: PreflightStep[] = [
+    { id: 'daemon', label: 'Mac daemon', state: 'pending' },
+    { id: 'remote', label: `Remote preflight (${host.name})`, state: 'pending' },
+  ];
+  if (profile !== 'skip') {
+    steps.push({
+      id: 'chrome',
+      label: `Chrome (profile: ${profile.name})`,
+      state: 'pending',
+    });
+  }
+  return steps;
+};
+
+interface AppProps {
+  onDone: (
+    payload: WizardSubmitPayload | null,
+    pre: PreflightRunResult | null,
+  ) => void;
+}
+
+const App: React.FC<AppProps> = ({ onDone }) => {
+  const [submission, setSubmission] = useState<WizardSubmitPayload | null>(
+    null,
+  );
+  const [steps, setSteps] = useState<PreflightStep[] | null>(null);
+  // Idempotent guard: prevent double-Enter on review from triggering
+  // preflight twice (which would re-launch Chrome / re-spawn socat).
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!submission) return;
+    const initial = initialPreflightSteps(submission.host, submission.profile);
+    setSteps(initial);
+    const setStep = (id: string, patch: Partial<PreflightStep>) =>
+      setSteps((cur) =>
+        cur ? cur.map((s) => (s.id === id ? { ...s, ...patch } : s)) : cur,
+      );
+    runPreflightSteps(submission, setStep)
+      .then(async (pre) => {
+        // Small pause so the user sees the final state before exit.
+        await new Promise((r) => setTimeout(r, pre.ok ? 200 : 300));
+        onDone(submission, pre);
+      })
+      .catch((err) => {
+        setStep('daemon', {
+          state: 'error',
+          error: err instanceof Error ? err.message : String(err),
+        });
+        setTimeout(() => onDone(submission, { ok: false }), 300);
+      });
+  }, [submission, onDone]);
+
+  return (
+    <Wizard
+      onSubmit={(p) => {
+        if (submittedRef.current) return;
+        submittedRef.current = true;
+        setSubmission(p);
+      }}
+      belowFrame={(_state: WizardState) =>
+        steps ? <PreflightView steps={steps} /> : null
+      }
+    />
+  );
+};
+
 async function main() {
-  const host = await pickHost();
-  if (!host) process.exit(1);
+  const result = await new Promise<{
+    submission: WizardSubmitPayload | null;
+    pre: PreflightRunResult | null;
+  }>((resolve) => {
+    const app = render(
+      <App
+        onDone={(submission, pre) => {
+          app.unmount();
+          resolve({ submission, pre });
+        }}
+      />,
+    );
+  });
 
-  const profile = await pickProfile();
-  if (!profile) process.exit(1);
-
-  const pre = await runPreflightWithUi(host, profile);
-  if (!pre.ok) process.exit(1);
+  if (!result.submission || !result.pre || !result.pre.ok) {
+    process.exit(1);
+  }
 
   // Hand the TTY off to ssh cleanly. ink leaves stdin in raw mode on
   // unmount; if the Bun parent keeps reading stdin it races with the
@@ -155,6 +165,7 @@ async function main() {
   process.stdin.unref();
   Bun.spawnSync(['stty', 'sane'], { stdio: ['inherit', 'inherit', 'inherit'] });
 
+  const host = result.submission.host;
   const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';
   const ourId = await fetchOurId(socketPath);
 
@@ -206,8 +217,8 @@ async function main() {
     );
   }
 
-  if (pre.socatPid !== undefined) {
-    const r = await runCleanup(host.name, pre.socatPid).catch((e) => ({
+  if (result.pre.socatPid !== undefined) {
+    const r = await runCleanup(host.name, result.pre.socatPid).catch((e) => ({
       ok: false as const,
       error: e instanceof Error ? e.message : String(e),
     }));
@@ -216,7 +227,7 @@ async function main() {
     } else {
       process.stderr.write(
         `\x1b[33m[mole] cleanup failed: ${r.error ?? 'unknown'}. ` +
-          `socat pid ${pre.socatPid} may still be running on ${host.name}.\x1b[0m\r\n`,
+          `socat pid ${result.pre.socatPid} may still be running on ${host.name}.\x1b[0m\r\n`,
       );
     }
   }
