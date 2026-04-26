@@ -4,9 +4,10 @@ import { Spinner } from './components/spinner';
 import { colors, icons } from './components/theme';
 
 export type PreflightStepState = 'pending' | 'running' | 'ok' | 'error';
+export type PreflightStepId = 'daemon' | 'remote' | 'chrome';
 
 export interface PreflightStep {
-  id: string;
+  id: PreflightStepId;
   label: string;
   state: PreflightStepState;
   error?: string;

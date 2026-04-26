@@ -12,27 +12,19 @@ describe('PreflightView', () => {
           { id: 'chrome', label: 'Chrome', state: 'ok' },
           { id: 'daemon', label: 'Daemon', state: 'running' },
           { id: 'remote', label: 'Remote preflight', state: 'pending' },
-          { id: 'extra', label: 'Extra', state: 'error' },
         ]}
       />,
     );
     const out = lastFrame()!;
-    // ok step shows the figures tick + label.
     expect(out).toContain(icons.tick);
     expect(out).toContain('Chrome');
-    // running step shows an animated spinner (initial frame on mount)
-    // alongside the label.
     expect(out).toContain(spinnerFrames[0]!);
     expect(out).toContain('Daemon');
-    // pending step at minimum surfaces its label.
     expect(out).toContain('Remote preflight');
-    // error step shows the figures cross + label.
-    expect(out).toContain(icons.cross);
-    expect(out).toContain('Extra');
     unmount();
   });
 
-  test('error message is shown indented under the failed step', () => {
+  test('error step shows the cross marker and the error message indented under it', () => {
     const { lastFrame, unmount } = render(
       <PreflightView
         steps={[
@@ -94,7 +86,7 @@ describe('PreflightView', () => {
     const states = ['pending', 'running', 'ok', 'error'] as const;
     for (const state of states) {
       const { lastFrame, unmount } = render(
-        <PreflightView steps={[{ id: 's', label: 'LABEL', state }]} />,
+        <PreflightView steps={[{ id: 'daemon', label: 'LABEL', state }]} />,
       );
       const out = lastFrame()!;
       // paddingLeft={2} + marker (1 char) + 2 spaces + label.
@@ -107,7 +99,7 @@ describe('PreflightView', () => {
     const { lastFrame, unmount } = render(
       <PreflightView
         steps={[
-          { id: 'r', label: 'L', state: 'ok', warning: 'WARN' },
+          { id: 'remote', label: 'L', state: 'ok', warning: 'WARN' },
         ]}
       />,
     );

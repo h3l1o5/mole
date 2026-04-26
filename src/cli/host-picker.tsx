@@ -11,6 +11,10 @@ const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
 const VALIDATION_ERROR = 'Use format user@hostname (e.g. root@example.com)';
 const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
 
+export function validateUserHost(input: string): string | null {
+  return USER_HOST_RE.test(input) ? null : VALIDATION_ERROR;
+}
+
 export interface HostPickerProps {
   hosts: SshHost[];
   ui: PickerUiState;
@@ -81,8 +85,9 @@ export const HostPicker: React.FC<HostPickerProps> = ({
       if (onInput) {
         const trimmed = ui.input.trim();
         if (trimmed.length === 0) return;
-        if (!USER_HOST_RE.test(trimmed)) {
-          setError(VALIDATION_ERROR);
+        const err = validateUserHost(trimmed);
+        if (err) {
+          setError(err);
           return;
         }
         onPick({ name: trimmed });

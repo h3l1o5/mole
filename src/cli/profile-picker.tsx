@@ -14,7 +14,7 @@ import type { PickerUiState } from './wizard/reducer';
 
 const PLACEHOLDER = 'Create new profile… (e.g. work-account)';
 
-const statusLabel = (s: ProfileStatus): string => {
+export const statusLabel = (s: ProfileStatus): string => {
   switch (s) {
     case 'free':
       return 'free';
@@ -27,7 +27,7 @@ const statusLabel = (s: ProfileStatus): string => {
   }
 };
 
-const statusColor = (s: ProfileStatus): string | undefined => {
+export const statusColor = (s: ProfileStatus): string | undefined => {
   switch (s) {
     case 'free':
       return undefined;
