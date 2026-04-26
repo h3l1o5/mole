@@ -3,18 +3,19 @@ import { Box } from 'ink';
 import { Spinner } from './spinner';
 import { arrowMarchFrames, colors } from './theme';
 
+// arrowMarchFrames are designed at 3 cells each.
+const FRAME_WIDTH = 3;
+
 export interface ArrowMarchProps {
   color?: string;
   intervalMs?: number;
-  width?: number;
 }
 
 export const ArrowMarch: React.FC<ArrowMarchProps> = ({
   color = colors.primary,
   intervalMs = 250,
-  width = arrowMarchFrames[arrowMarchFrames.length - 1]!.length,
 }) => (
-  <Box width={width}>
+  <Box width={FRAME_WIDTH}>
     <Spinner color={color} intervalMs={intervalMs} frames={arrowMarchFrames} />
   </Box>
 );

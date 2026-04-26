@@ -58,7 +58,7 @@ const ICON_CELL_WIDTH = 2;
 const TITLE_TEXT = 'READY TO TUNNEL';
 
 const ReviewTitle: React.FC<{ submitted: boolean }> = ({ submitted }) => (
-  <BreathingText frozen={submitted}>
+  <BreathingText frozen={submitted} periodMs={10000}>
     {submitted
       ? TITLE_TEXT
       : `${decoration.titleBarLeft} ${TITLE_TEXT} ${decoration.titleBarRight}`}
