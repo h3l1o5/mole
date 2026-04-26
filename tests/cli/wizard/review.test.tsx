@@ -149,4 +149,55 @@ describe('<ReviewStep>', () => {
     expect(frame).toContain('skipped');
     expect(frame).not.toContain('launch Chrome');
   });
+
+  test('narrow path inlines status icons with each section label', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={48}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('✓ Host');
+    expect(frame).toContain('✓ Profile');
+    expect(frame).toContain('→ Will');
+  });
+
+  test('narrow path title also uses all caps with decorative bars', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={48}
+      />,
+    );
+    expect(lastFrame() ?? '').toContain('▌ READY TO TUNNEL ▐');
+  });
+
+  test('narrow path CTA is inline (no border chars) but still all caps', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={48}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('press ENTER');
+    expect(frame).not.toMatch(/[╭╰╮╯]/);
+  });
+
+  test('narrow submitted hides CTA and drops decorative bars', () => {
+    const { lastFrame } = render(
+      <ReviewStep host={HOST} profile={PROFILE} submitted innerWidth={48} />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).not.toContain('press ENTER');
+    expect(frame).not.toContain('▌');
+    expect(frame).not.toContain('▐');
+  });
 });

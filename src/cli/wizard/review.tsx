@@ -76,20 +76,6 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Box>
 );
 
-const Header: React.FC<Pick<ReviewStepProps, 'submitted'>> = ({ submitted }) => (
-  <Box flexDirection="column">
-    <Text dimColor={submitted}>
-      Ready to{' '}
-      <Text color={submitted ? undefined : colors.primary}>tunnel</Text>
-    </Text>
-    {!submitted ? (
-      <Text dimColor>
-        <Text color={colors.primary}>enter</Text> start · ← back
-      </Text>
-    ) : null}
-  </Box>
-);
-
 const WideReview: React.FC<ReviewStepProps> = ({
   host,
   profile,
@@ -190,12 +176,21 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
     profile !== 'skip' ? profileStatusKeyword(profile.status) : null;
   const statusColr =
     profile !== 'skip' ? profileStatusColor(profile.status) : undefined;
+  const iconColor = submitted ? undefined : colors.primary;
   return (
     <Box flexDirection="column" gap={1}>
-      <Header submitted={submitted} />
+      <Box flexDirection="column">
+        {submitted ? (
+          <Text dimColor>READY TO TUNNEL</Text>
+        ) : (
+          <BreathingText>{'▌ READY TO TUNNEL ▐'}</BreathingText>
+        )}
+      </Box>
 
       <Box flexDirection="column">
-        <Text dimColor>Host</Text>
+        <Text color={iconColor} dimColor={submitted}>
+          {`${icons.tick} Host`}
+        </Text>
         <Text bold dimColor={submitted}>
           {host.name}
         </Text>
@@ -203,7 +198,9 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
       </Box>
 
       <Box flexDirection="column">
-        <Text dimColor>Profile</Text>
+        <Text color={iconColor} dimColor={submitted}>
+          {`${icons.tick} Profile`}
+        </Text>
         {profile === 'skip' ? (
           <Text dimColor>skipped</Text>
         ) : (
@@ -224,11 +221,24 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
       </Box>
 
       <Box flexDirection="column">
-        <Text dimColor>Will</Text>
+        <Text color={iconColor} dimColor={submitted}>
+          → Will
+        </Text>
         {willLines.map((line, i) => (
           <Text key={i} dimColor={submitted}>{`· ${line}`}</Text>
         ))}
       </Box>
+
+      {!submitted ? (
+        <Box flexDirection="column">
+          <Box flexDirection="row">
+            <ArrowMarch />
+            <Text> </Text>
+            <Text color={colors.primary}>press ENTER</Text>
+          </Box>
+          <Text dimColor>← back</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 };
