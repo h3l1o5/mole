@@ -365,7 +365,7 @@ const wizardCases: Case[] = [
   },
   {
     view: 'wizard',
-    name: 'review with chrome',
+    name: 'polished review wide @ 70 inner cols',
     run: () =>
       snapshot(
         <WizardFrame>
@@ -384,13 +384,14 @@ const wizardCases: Case[] = [
               pid: 4242,
             }}
             submitted={false}
+            innerWidth={70}
           />
         </WizardFrame>,
       ),
   },
   {
     view: 'wizard',
-    name: 'review with skip Chrome',
+    name: 'polished review skip Chrome wide @ 70 inner cols',
     run: () =>
       snapshot(
         <WizardFrame>
@@ -404,13 +405,14 @@ const wizardCases: Case[] = [
             host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
             profile="skip"
             submitted={false}
+            innerWidth={70}
           />
         </WizardFrame>,
       ),
   },
   {
     view: 'wizard',
-    name: 'review submitted (frozen)',
+    name: 'polished review wide submitted (frozen)',
     run: () =>
       snapshot(
         <WizardFrame frozen>
@@ -437,7 +439,7 @@ const wizardCases: Case[] = [
   },
   {
     view: 'wizard',
-    name: 'narrow review @ 48 inner cols',
+    name: 'polished review narrow @ 48 inner cols',
     run: () =>
       snapshot(
         <ReviewStep
@@ -455,13 +457,31 @@ const wizardCases: Case[] = [
   },
   {
     view: 'wizard',
-    name: 'narrow review skip Chrome @ 48 inner cols',
+    name: 'polished review narrow skip Chrome @ 48 inner cols',
     run: () =>
       snapshot(
         <ReviewStep
           host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
           profile="skip"
           submitted={false}
+          innerWidth={48}
+        />,
+      ),
+  },
+  {
+    view: 'wizard',
+    name: 'polished review narrow submitted (frozen)',
+    run: () =>
+      snapshot(
+        <ReviewStep
+          host={{ name: 'vbm', user: 'root', hostname: 'martyvbm.syno' }}
+          profile={{
+            name: 'agent',
+            path: '/p/agent',
+            status: 'reusable',
+            pid: 4242,
+          }}
+          submitted
           innerWidth={48}
         />,
       ),
