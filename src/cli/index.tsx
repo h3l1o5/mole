@@ -1,86 +1,16 @@
 #!/usr/bin/env bun
 import React, { useState, useEffect, useRef } from 'react';
 import { render } from 'ink';
-import { Wizard } from './wizard';
-import type { WizardState, WizardSubmitPayload } from './wizard';
+import { Wizard, type WizardState, type WizardSubmitPayload } from './wizard';
 import { PreflightView, type PreflightStep } from './preflight';
-import type { SshHost } from '../lib/ssh-config';
-import type { ProfileInfo } from '../lib/chrome-profile';
-import { launchChrome } from '../lib/chrome-launcher';
-import { isDaemonHealthy } from '../lib/daemon-health';
-import { runPreflight } from '../lib/remote-preflight';
 import { spawnSsh } from '../lib/ssh-session';
-import { buildNonInteractiveSshArgs } from '../lib/ssh-spawn';
-import { checkOnce } from './watchdog';
-
-interface PreflightRunResult {
-  ok: boolean;
-}
-
-async function runPreflightSteps(
-  payload: WizardSubmitPayload,
-  setStep: (id: string, patch: Partial<PreflightStep>) => void,
-): Promise<PreflightRunResult> {
-  const { host, profile } = payload;
-  const skipChrome = profile === 'skip';
-
-  // Daemon
-  setStep('daemon', { state: 'running' });
-  const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';
-  const healthy = await isDaemonHealthy(socketPath);
-  if (!healthy) {
-    setStep('daemon', {
-      state: 'error',
-      error:
-        'Daemon not responding. Run: launchctl kickstart -k gui/$UID/com.h3l1o5.mole-daemon',
-    });
-    return { ok: false };
-  }
-  setStep('daemon', { state: 'ok' });
-
-  // Remote preflight
-  setStep('remote', { state: 'running' });
-  const r = await runPreflight(host.name);
-  const warning = r.warnings.length > 0 ? r.warnings.join(' ') : undefined;
-  if (!r.ok) {
-    setStep('remote', { state: 'error', error: r.errors.join('; '), warning });
-    return { ok: false };
-  }
-  setStep('remote', { state: 'ok', warning });
-  if (warning) await new Promise((x) => setTimeout(x, 1500));
-
-  if (!skipChrome) {
-    setStep('chrome', { state: 'running' });
-    const p = profile as ProfileInfo;
-    if (p.status === 'reusable') {
-      setStep('chrome', { state: 'ok', label: `Chrome (reusing pid ${p.pid})` });
-    } else {
-      launchChrome({ profilePath: p.path });
-      await new Promise((x) => setTimeout(x, 1500));
-      setStep('chrome', { state: 'ok' });
-    }
-  }
-
-  return { ok: true };
-}
-
-const initialPreflightSteps = (
-  host: SshHost,
-  profile: ProfileInfo | 'skip',
-): PreflightStep[] => {
-  const steps: PreflightStep[] = [
-    { id: 'daemon', label: 'Mac daemon', state: 'pending' },
-    { id: 'remote', label: `Remote preflight (${host.name})`, state: 'pending' },
-  ];
-  if (profile !== 'skip') {
-    steps.push({
-      id: 'chrome',
-      label: `Chrome (profile: ${profile.name})`,
-      state: 'pending',
-    });
-  }
-  return steps;
-};
+import { fetchOurId } from '../lib/daemon-id';
+import { startHijackWatchdog } from './hijack-watchdog';
+import {
+  initialPreflightSteps,
+  runPreflightSteps,
+  type PreflightRunResult,
+} from './preflight-runner';
 
 interface AppProps {
   onDone: (
@@ -180,10 +110,6 @@ async function main() {
     });
   });
 
-  // Watchdog: if another client takes over the -R tunnel, sshd unlinks
-  // our forwarded socket without notice. Periodically ask the remote
-  // end who it's currently tunneling to; two strikes → bail so the
-  // user isn't silently talking to another client's daemon.
   startHijackWatchdog({
     host: host.name,
     ourId,
@@ -202,11 +128,8 @@ async function main() {
 
   const { code, signal } = await sshExit;
 
-  // Summarise the disconnect. Hijack already printed its own yellow line
-  // on the way out; a clean user-initiated `exit` (code 0) doesn't need
-  // any chrome. Anything else (network drop, forced kill, etc) gets an
-  // explicit "[mole] disconnected" so the user knows mole is winding
-  // down rather than hung.
+  // Summarise the disconnect. Hijack already printed its own line; a
+  // clean user-initiated `exit` (code 0) needs no extra chrome.
   if (!hijacked && code !== 0) {
     process.stderr.write(
       `\r\n\x1b[33m[mole] disconnected from ${host.name}` +
@@ -214,73 +137,6 @@ async function main() {
         `.\x1b[0m\r\n`,
     );
   }
-
-}
-
-async function fetchOurId(socketPath: string): Promise<string | null> {
-  try {
-    const r = await fetch('http://x/id', { unix: socketPath });
-    if (!r.ok) return null;
-    const j = (await r.json()) as { id?: string };
-    return typeof j.id === 'string' && j.id.length > 0 ? j.id : null;
-  } catch {
-    return null;
-  }
-}
-
-function startHijackWatchdog(opts: {
-  host: string;
-  ourId: string | null;
-  onHijack: () => void;
-  isStopped: () => boolean;
-}): void {
-  const intervalSec = Number(process.env.MOLE_WATCHDOG_SEC ?? 10);
-  if (!opts.ourId || !Number.isFinite(intervalSec) || intervalSec <= 0) return;
-  const intervalMs = intervalSec * 1000;
-  const ourId = opts.ourId;
-
-  const runner = async (host: string) => {
-    const proc = Bun.spawn(
-      [
-        'ssh',
-        ...buildNonInteractiveSshArgs(host, [
-          'curl',
-          '-sf',
-          '--max-time',
-          '3',
-          '--unix-socket',
-          '/tmp/mole-clip.sock',
-          'http://x/id',
-        ]),
-      ],
-      { stdout: 'pipe', stderr: 'ignore' },
-    );
-    const [stdout, code] = await Promise.all([
-      new Response(proc.stdout).text(),
-      proc.exited,
-    ]);
-    return { stdout, code };
-  };
-
-  void (async () => {
-    let strikes = 0;
-    while (!opts.isStopped()) {
-      await new Promise((r) => setTimeout(r, intervalMs));
-      if (opts.isStopped()) return;
-      const result = await checkOnce({ host: opts.host, ourId, runner });
-      if (result === 'mismatch') {
-        strikes++;
-        if (strikes >= 2) {
-          opts.onHijack();
-          return;
-        }
-      } else {
-        // 'ok' or 'unreachable' both reset — transient ssh blips shouldn't
-        // accumulate toward a false positive.
-        strikes = 0;
-      }
-    }
-  })();
 }
 
 // Explicit exit so the hijack watchdog's pending setTimeout doesn't
