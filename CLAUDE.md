@@ -6,7 +6,6 @@
 
 - **架構**：long-running daemon + thin TUI client（同 `dockerd`/`docker`、`tmux` server/client）
 - **Stack**：Bun + TypeScript + Ink/React + Unix socket
-- **設計文件**：`docs/2026-04-24-mole-design.md`
 - **README**：英文 + 繁中雙語維護（`README.md`、`README.zh-TW.md`）
 
 ## 協作模式
@@ -113,10 +112,6 @@ bun run daemon:status    # 看 PID / state
 - **Spinner frames**：Braille-style，固定 80ms 一格
 
 不要硬編 color string、不要直接寫 unicode glyph、不要自己另起 spinner frames。
-
-### 可重用 components
-
-`src/cli/components/` 下：`spinner`、`status-message`、`badge`、`select-list`。新功能優先看能不能用這些拼，不能再新增。新 component 一定要寫 test + 加進 preview。
 
 ### 強制的 UX patterns
 
