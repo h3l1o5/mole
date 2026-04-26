@@ -125,18 +125,15 @@ export const Wizard: React.FC<WizardProps> = ({
     );
   };
 
-  const profileNameForBreadcrumb: string | 'skip' | null =
-    state.profile === 'skip'
-      ? 'skip'
-      : state.profile?.name ?? null;
-
   return (
     <Box flexDirection="column">
       <WizardFrame frozen={state.submitted}>
         <Breadcrumb
           step={state.step}
           hostName={state.host?.name ?? null}
-          profileName={profileNameForBreadcrumb}
+          profileName={
+            state.profile === 'skip' ? 'skip' : state.profile?.name ?? null
+          }
           innerWidth={innerWidth}
           frozen={state.submitted}
         />
