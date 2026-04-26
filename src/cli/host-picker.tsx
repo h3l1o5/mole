@@ -28,7 +28,6 @@ export const HostPicker: React.FC<HostPickerProps> = ({
   const onInput = ui.index === inputRowIndex;
   const [error, setError] = React.useState<string | null>(null);
 
-  // Move-off-input clears any stale validation error.
   React.useEffect(() => {
     if (!onInput) setError(null);
   }, [onInput]);
@@ -86,8 +85,8 @@ export const HostPicker: React.FC<HostPickerProps> = ({
         </Text>
         <Text dimColor>
           {hosts.length === 0
-            ? 'No hosts found in ~/.ssh/config. Type one below.'
-            : 'These are loaded from ~/.ssh/config. Or type one below.'}
+            ? 'No hosts in ~/.ssh/config — type one below'
+            : 'Loaded from ~/.ssh/config — or type one below'}
         </Text>
       </Box>
       <Box flexDirection="column">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { colors } from '../components/theme';
-import { layoutBreadcrumb, type BreadcrumbSegment } from './layout';
+import { layoutBreadcrumb, type BreadcrumbSegment } from './breadcrumb-layout';
 import type { WizardStep } from './reducer';
 
 export interface BreadcrumbProps {
@@ -12,18 +12,11 @@ export interface BreadcrumbProps {
   frozen?: boolean;
 }
 
-// Why color="gray" instead of dimColor: chalk's `dim` and `bold` modifiers
-// share the same SGR reset code (\x1b[22m). When sibling Text segments are
-// concatenated, the dim attribute leaks into the next segment until its
-// own reset fires, dimming a cyan+bold+underline current step into a
-// muted shade. Using an explicit foreground colour avoids that whole
-// class of cross-segment ANSI interference.
+// Use color="gray" not dimColor: chalk's dim and bold share the same
+// SGR reset (\x1b[22m), so dim leaks into adjacent bold segments and
+// mutes the current-step highlight. Explicit colour avoids the bleed.
 const SUBTLE_COLOR = 'gray';
 
-// Render contract (see layout.ts): a single space is inserted between a
-// label/currentLabel and its following value segment. All other adjacent
-// segments are concatenated as-is — separator already carries its own
-// padding inside its text.
 const renderSegment = (
   s: BreadcrumbSegment,
   i: number,

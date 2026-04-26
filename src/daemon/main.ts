@@ -4,8 +4,8 @@ import { createServer } from './server';
 import { readClipboard, createCachedReader } from '../lib/clipboard';
 import { getOrCreateClientId } from '../lib/client-id';
 
-// Cache briefly so Claude Code's back-to-back `TARGETS` and `image/png`
-// xclip calls only spawn one osascript (~700ms each) per paste.
+// Cache briefly so agents' back-to-back `TARGETS` + `image/png` xclip
+// reads on one paste only spawn one ~700ms osascript instead of two.
 const CLIPBOARD_CACHE_TTL_MS = 500;
 
 const socketPath = process.env.MOLE_SOCKET ?? '/tmp/mole-clip.sock';

@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ClipboardResult } from '../../src/lib/clipboard';
 
+const emptyClipboard = async (): Promise<ClipboardResult> => ({ type: 'empty' });
+
 describe('daemon server', () => {
   let tempDir: string;
   let sockPath: string;
@@ -32,7 +34,7 @@ describe('daemon server', () => {
   });
 
   test('GET /type returns empty when no image', async () => {
-    server = await createServer(sockPath, async () => ({ type: 'empty' }));
+    server = await createServer(sockPath, emptyClipboard);
     const r = await fetch('http://x/type', { unix: sockPath });
     expect(await r.json()).toEqual({ type: 'empty' });
   });
@@ -52,21 +54,21 @@ describe('daemon server', () => {
   });
 
   test('GET /image returns 404 when clipboard empty', async () => {
-    server = await createServer(sockPath, async () => ({ type: 'empty' }));
+    server = await createServer(sockPath, emptyClipboard);
     const r = await fetch('http://x/image', { unix: sockPath });
     expect(r.status).toBe(404);
   });
 
   test('unknown path returns 404', async () => {
-    server = await createServer(sockPath, async () => ({ type: 'empty' }));
+    server = await createServer(sockPath, emptyClipboard);
     const r = await fetch('http://x/whatever', { unix: sockPath });
     expect(r.status).toBe(404);
   });
 
   test('re-creating server on same socket path succeeds (unlinks stale)', async () => {
-    server = await createServer(sockPath, async () => ({ type: 'empty' }));
+    server = await createServer(sockPath, emptyClipboard);
     await server.stop();
-    server = await createServer(sockPath, async () => ({ type: 'empty' }));
+    server = await createServer(sockPath, emptyClipboard);
     const r = await fetch('http://x/type', { unix: sockPath });
     expect(r.status).toBe(200);
   });
@@ -74,7 +76,7 @@ describe('daemon server', () => {
   test('GET /id returns the configured client id', async () => {
     server = await createServer(
       sockPath,
-      async () => ({ type: 'empty' }),
+      emptyClipboard,
       { clientId: 'abc-123' },
     );
     const r = await fetch('http://x/id', { unix: sockPath });

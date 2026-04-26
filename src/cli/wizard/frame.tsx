@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, useStdout } from 'ink';
-import { computeWizardWidth, isFallbackMode } from './layout';
+import { computeWizardWidth, isFallbackMode } from './width';
 
 export interface WizardFrameProps {
   frozen?: boolean;
@@ -48,15 +48,9 @@ export const WizardFrame: React.FC<WizardFrameProps> = ({
   );
 };
 
-// Exposed so child components (Breadcrumb etc.) can size themselves
-// relative to the frame's inner width.
-export function innerWidthFromTerminal(terminalCols: number): number {
-  if (isFallbackMode(terminalCols)) return terminalCols;
-  // outer width − 2 borders − 2*paddingX
-  return computeWizardWidth(terminalCols) - 2 - 2 * 2;
-}
-
 export function useWizardInnerWidth(): number {
   const cols = useTerminalWidth();
-  return innerWidthFromTerminal(cols);
+  if (isFallbackMode(cols)) return cols;
+  // outer width − 2 borders − 2*paddingX
+  return computeWizardWidth(cols) - 2 - 2 * 2;
 }

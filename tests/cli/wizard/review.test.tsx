@@ -14,7 +14,7 @@ const PROFILE: ProfileInfo = {
 };
 
 describe('<ReviewStep>', () => {
-  test('renders host with two-line description', () => {
+  test('renders host name and computed description', () => {
     const { lastFrame } = render(
       <ReviewStep host={HOST} profile={PROFILE} submitted={false} />,
     );
@@ -54,6 +54,6 @@ describe('<ReviewStep>', () => {
     );
     const frame = lastFrame() ?? '';
     expect(frame).toContain('vbm');
-    expect(frame).not.toContain('Press enter to start');
+    expect(frame).not.toContain('enter start');
   });
 });

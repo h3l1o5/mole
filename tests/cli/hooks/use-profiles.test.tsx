@@ -2,8 +2,8 @@ import React from 'react';
 import { test, expect, describe } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { Text } from 'ink';
-import { useProfiles } from '../../src/cli/hooks/use-profiles';
-import type { ProfileInfo } from '../../src/lib/chrome-profile';
+import { useProfiles } from '../../../src/cli/hooks/use-profiles';
+import type { ProfileInfo } from '../../../src/lib/chrome-profile';
 
 const Probe: React.FC<{
   scanner: () => Promise<ProfileInfo[]>;

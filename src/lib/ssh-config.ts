@@ -69,20 +69,14 @@ export function loadSshHosts(
   return parseSshConfig(readFileSync(configPath, 'utf8'));
 }
 
-// Expand the small subset of ssh_config TOKENS we care about for display.
-// %h and %n both resolve to the original target host on the command line,
-// which for us is always the alias the user picked.
-function expandTokens(s: string, alias: string): string {
-  return s.replace(/%[hn]/g, alias);
-}
-
 // Render a one-line description of how this host will be reached.
-//   user + hostname → "user@hostname"   (with %h/%n expanded)
-//   user only       → "user@alias"      (HostName falls back to alias)
-//   hostname only   → "hostname"        (with %h/%n expanded)
-//   neither         → undefined         (caller should hide the column)
+// HostName may contain %h/%n tokens; both resolve to the alias.
+//   user + hostname → "user@hostname"
+//   user only       → "user@alias"     (HostName falls back to alias)
+//   hostname only   → "hostname"
+//   neither         → undefined        (caller should hide the column)
 export function describeHost(h: SshHost): string | undefined {
-  const right = h.hostname ? expandTokens(h.hostname, h.name) : h.name;
+  const right = h.hostname ? h.hostname.replace(/%[hn]/g, h.name) : h.name;
   if (h.user && h.hostname) return `${h.user}@${right}`;
   if (h.user) return `${h.user}@${right}`;
   if (h.hostname) return right;
