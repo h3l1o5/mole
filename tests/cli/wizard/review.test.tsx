@@ -56,4 +56,52 @@ describe('<ReviewStep>', () => {
     expect(frame).toContain('vbm');
     expect(frame).not.toContain('enter start');
   });
+
+  test('hint phrase still renders intact when not submitted', () => {
+    const { lastFrame } = render(
+      <ReviewStep host={HOST} profile={PROFILE} submitted={false} />,
+    );
+    expect(lastFrame() ?? '').toContain('enter start · ← back');
+  });
+
+  test('narrow path uses short status keyword, no em-dash phrase', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={48}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('(reusable)');
+    expect(frame).not.toContain('reusable — will attach');
+    expect(frame).toContain('launch Chrome');
+  });
+
+  test('wide path keeps the full em-dash status phrase', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile={PROFILE}
+        submitted={false}
+        innerWidth={70}
+      />,
+    );
+    expect(lastFrame() ?? '').toContain('reusable — will attach');
+  });
+
+  test('narrow path skip Chrome shows skipped marker', () => {
+    const { lastFrame } = render(
+      <ReviewStep
+        host={HOST}
+        profile="skip"
+        submitted={false}
+        innerWidth={48}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('skipped');
+    expect(frame).not.toContain('launch Chrome');
+  });
 });

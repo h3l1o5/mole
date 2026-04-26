@@ -123,6 +123,7 @@ export const Wizard: React.FC<WizardProps> = ({
         host={state.host!}
         profile={state.profile!}
         submitted={state.submitted}
+        innerWidth={innerWidth}
       />
     );
   };
