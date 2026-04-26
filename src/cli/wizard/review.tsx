@@ -86,11 +86,9 @@ const WideReview: React.FC<ReviewStepProps> = ({
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="column">
-        {submitted ? (
-          <Text dimColor>READY TO TUNNEL</Text>
-        ) : (
-          <BreathingText>{'▌ READY TO TUNNEL ▐'}</BreathingText>
-        )}
+        <BreathingText frozen={submitted}>
+          {submitted ? 'READY TO TUNNEL' : '▌ READY TO TUNNEL ▐'}
+        </BreathingText>
       </Box>
 
       <Box flexDirection="column">
@@ -180,11 +178,9 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="column">
-        {submitted ? (
-          <Text dimColor>READY TO TUNNEL</Text>
-        ) : (
-          <BreathingText>{'▌ READY TO TUNNEL ▐'}</BreathingText>
-        )}
+        <BreathingText frozen={submitted}>
+          {submitted ? 'READY TO TUNNEL' : '▌ READY TO TUNNEL ▐'}
+        </BreathingText>
       </Box>
 
       <Box flexDirection="column">

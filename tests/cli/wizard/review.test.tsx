@@ -200,4 +200,22 @@ describe('<ReviewStep>', () => {
     expect(frame).not.toContain('▌');
     expect(frame).not.toContain('▐');
   });
+
+  test('submitted title is plain READY TO TUNNEL with no decorative bars (wide and narrow)', () => {
+    for (const innerWidth of [70, 48]) {
+      const { lastFrame, unmount } = render(
+        <ReviewStep
+          host={HOST}
+          profile={PROFILE}
+          submitted
+          innerWidth={innerWidth}
+        />,
+      );
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('READY TO TUNNEL');
+      expect(frame).not.toContain('▌');
+      expect(frame).not.toContain('▐');
+      unmount();
+    }
+  });
 });
