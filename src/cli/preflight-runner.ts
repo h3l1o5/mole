@@ -1,5 +1,5 @@
 import type { WizardSubmitPayload } from './wizard';
-import type { PreflightStep } from './preflight';
+import type { PreflightStep, PreflightStepId } from './preflight';
 import type { SshHost } from '../lib/ssh-config';
 import type { ProfileInfo } from '../lib/chrome-profile';
 import { launchChrome } from '../lib/chrome-launcher';
@@ -11,7 +11,7 @@ export interface PreflightRunResult {
   ok: boolean;
 }
 
-export type SetStep = (id: string, patch: Partial<PreflightStep>) => void;
+export type SetStep = (id: PreflightStepId, patch: Partial<PreflightStep>) => void;
 
 export interface PreflightDeps {
   isDaemonHealthy: () => Promise<boolean>;

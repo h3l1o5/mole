@@ -9,6 +9,7 @@ import {
 import type { ProfileInfo } from '../../src/lib/chrome-profile';
 import type { PickerUiState } from '../../src/cli/wizard/reducer';
 import { colors } from '../../src/cli/components/theme';
+import { KEY, flush, press } from './ink-keys';
 
 const PROFILE = (
   name: string,
@@ -22,22 +23,6 @@ const makeUi = (over: Partial<PickerUiState> = {}): PickerUiState => ({
   cursor: 0,
   ...over,
 });
-
-const KEY = {
-  enter: '\r',
-  down: '\x1b[B',
-  up: '\x1b[A',
-};
-
-const flush = () => new Promise((r) => setTimeout(r, 20));
-const press = async (
-  stdin: { write: (s: string) => void },
-  data: string,
-): Promise<void> => {
-  await flush();
-  stdin.write(data);
-  await flush();
-};
 
 describe('statusLabel', () => {
   test('exhaustively maps each status to a user-facing string', () => {
@@ -109,8 +94,6 @@ describe('<ProfilePicker> keyboard wiring', () => {
       />,
     );
     await press(stdin, KEY.down);
-    // After flushing initial-focus effect (which lands on 0 here since
-    // a is free), down should jump from 0 → 2 (skipping the busy 'b').
     expect(patches).toContainEqual({ index: 2 });
     expect(patches).not.toContainEqual({ index: 1 });
     unmount();
@@ -132,7 +115,6 @@ describe('<ProfilePicker> keyboard wiring', () => {
       />,
     );
     await flush();
-    // Initial focus effect: skip busy 'a', land on 'b' (index 1).
     expect(patches).toContainEqual({ index: 1 });
     unmount();
   });

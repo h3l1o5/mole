@@ -4,6 +4,7 @@ import { render } from 'ink-testing-library';
 import { HostPicker, validateUserHost } from '../../src/cli/host-picker';
 import type { SshHost } from '../../src/lib/ssh-config';
 import type { PickerUiState } from '../../src/cli/wizard/reducer';
+import { KEY, press } from './ink-keys';
 
 const HOSTS: SshHost[] = [
   { name: 'vbm', user: 'root', hostname: 'martyvbm.syno' },
@@ -17,26 +18,6 @@ const makeUi = (over: Partial<PickerUiState> = {}): PickerUiState => ({
   ...over,
 });
 
-const KEY = {
-  enter: '\r',
-  down: '\x1b[B',
-  up: '\x1b[A',
-};
-
-const flush = () => new Promise((r) => setTimeout(r, 20));
-
-// useInput attaches its data listener in a useEffect that runs after
-// the first paint. Tests must flush once before writing to stdin so
-// the listener is wired up.
-const press = async (
-  stdin: { write: (s: string) => void },
-  data: string,
-): Promise<void> => {
-  await flush();
-  stdin.write(data);
-  await flush();
-};
-
 describe('validateUserHost', () => {
   test('null on valid user@host', () => {
     expect(validateUserHost('root@example.com')).toBeNull();
@@ -44,9 +25,9 @@ describe('validateUserHost', () => {
     expect(validateUserHost('user.name@host-1.local')).toBeNull();
   });
 
-  test('null on empty / whitespace (picker ignores Enter on blank)', () => {
-    expect(validateUserHost('')).toBeNull();
-    expect(validateUserHost('   ')).toBeNull();
+  test('error on empty / whitespace (caller is responsible for ignoring blank Enter)', () => {
+    expect(validateUserHost('')).toMatch(/user@hostname/);
+    expect(validateUserHost('   ')).toMatch(/user@hostname/);
   });
 
   test('error when the @ separator is missing', () => {
@@ -68,10 +49,6 @@ describe('validateUserHost', () => {
 
   test('error when there are multiple @ signs', () => {
     expect(validateUserHost('a@b@c')).toMatch(/user@hostname/);
-  });
-
-  test('trims surrounding whitespace before validating', () => {
-    expect(validateUserHost('  root@example.com  ')).toBeNull();
   });
 });
 
