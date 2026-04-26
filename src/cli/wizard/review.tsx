@@ -85,26 +85,20 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const CTA_TEXT = 'press ENTER to tunnel';
 
-const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => {
+const CtaBlock: React.FC = () => {
   const color =
     useBreathingColor({
       baseColor: colorPhase.primary.base,
       peakColor: colorPhase.primary.peak,
       periodMs: 8000,
     }) ?? colors.primary;
-  if (bordered) {
-    return (
-      <Box
-        borderStyle="round"
-        borderColor={color}
-        paddingX={1}
-        alignSelf="flex-start"
-      >
-        <Text color={color}>{CTA_TEXT}</Text>
-      </Box>
-    );
-  }
-  return <Text color={color}>{CTA_TEXT}</Text>;
+  return (
+    <Box alignSelf="flex-start">
+      <Text backgroundColor={color} color="black" bold>
+        {`  ${CTA_TEXT}  `}
+      </Text>
+    </Box>
+  );
 };
 
 const WideReview: React.FC<ReviewStepProps> = ({
@@ -172,7 +166,7 @@ const WideReview: React.FC<ReviewStepProps> = ({
         ))}
       </Box>
 
-      {!submitted ? <CtaBlock bordered /> : null}
+      {!submitted ? <CtaBlock /> : null}
     </Box>
   );
 };
@@ -235,7 +229,7 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
         ))}
       </Box>
 
-      {!submitted ? <CtaBlock bordered={false} /> : null}
+      {!submitted ? <CtaBlock /> : null}
     </Box>
   );
 };

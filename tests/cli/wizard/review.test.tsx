@@ -57,7 +57,7 @@ describe('<ReviewStep>', () => {
     expect(frame).not.toContain('press ENTER');
   });
 
-  test('wide path CTA shows "press ENTER" inside a bordered box', () => {
+  test('wide path CTA shows "press ENTER to tunnel" as a solid block', () => {
     const { lastFrame } = render(
       <ReviewStep
         host={HOST}
@@ -68,7 +68,7 @@ describe('<ReviewStep>', () => {
     );
     const frame = lastFrame() ?? '';
     expect(frame).toContain('press ENTER to tunnel');
-    expect(frame).toMatch(/[╭╰]/);
+    expect(frame).not.toMatch(/[╭╰╮╯]/);
   });
 
   test('wide path renders ✓ status icons for Host and Profile', () => {
