@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, icons } from '../components/theme';
+import { colors, decoration, icons } from '../components/theme';
 import { BreathingText } from '../components/breathing-text';
 import { ArrowMarch } from '../components/arrow-march';
 import { describeHost, type SshHost } from '../../lib/ssh-config';
@@ -50,19 +50,27 @@ const profileStatusColor = (s: ProfileStatus): string | undefined => {
 };
 
 const LABEL_WIDTH = 'Profile'.length + 2;
-// Below this inner width the column-aligned layout starts to wrap and
-// ink's em-dash / Box gap measurements drift. Switch to a plain
-// linebreak-per-field layout at or below the threshold.
+// Below this width the column-aligned wide layout starts to wrap.
 const NARROW_THRESHOLD = 56;
 
 const ICON_CELL_WIDTH = 2;
 
-const StatusIcon: React.FC<{ glyph: string; dim?: boolean }> = ({
+const TITLE_TEXT = 'READY TO TUNNEL';
+
+const ReviewTitle: React.FC<{ submitted: boolean }> = ({ submitted }) => (
+  <BreathingText frozen={submitted}>
+    {submitted
+      ? TITLE_TEXT
+      : `${decoration.titleBarLeft} ${TITLE_TEXT} ${decoration.titleBarRight}`}
+  </BreathingText>
+);
+
+const StatusIcon: React.FC<{ glyph: string; submitted?: boolean }> = ({
   glyph,
-  dim,
+  submitted,
 }) => (
   <Box width={ICON_CELL_WIDTH}>
-    <Text color={dim ? undefined : colors.primary} dimColor={dim}>
+    <Text color={submitted ? undefined : colors.primary} dimColor={submitted}>
       {glyph}
     </Text>
   </Box>
@@ -76,6 +84,34 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Box>
 );
 
+const CtaContent: React.FC = () => (
+  <>
+    <ArrowMarch />
+    <Text> </Text>
+    <Text color={colors.primary}>press ENTER</Text>
+  </>
+);
+
+const CtaBlock: React.FC<{ bordered: boolean }> = ({ bordered }) => (
+  <Box flexDirection="column">
+    {bordered ? (
+      <Box
+        borderStyle="round"
+        borderColor={colors.primary}
+        paddingX={1}
+        alignSelf="flex-start"
+      >
+        <CtaContent />
+      </Box>
+    ) : (
+      <Box flexDirection="row">
+        <CtaContent />
+      </Box>
+    )}
+    <Text dimColor>← back</Text>
+  </Box>
+);
+
 const WideReview: React.FC<ReviewStepProps> = ({
   host,
   profile,
@@ -83,17 +119,17 @@ const WideReview: React.FC<ReviewStepProps> = ({
 }) => {
   const desc = describeHost(host);
   const willLines = buildWillLines({ host, profile });
+  const blurb =
+    profile !== 'skip' ? profileStatusBlurb(profile.status) : null;
+  const blurbColor =
+    profile !== 'skip' ? profileStatusColor(profile.status) : undefined;
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column">
-        <BreathingText frozen={submitted}>
-          {submitted ? 'READY TO TUNNEL' : '▌ READY TO TUNNEL ▐'}
-        </BreathingText>
-      </Box>
+      <ReviewTitle submitted={submitted} />
 
       <Box flexDirection="column">
         <Box flexDirection="row">
-          <StatusIcon glyph={icons.tick} dim={submitted} />
+          <StatusIcon glyph={icons.tick} submitted={submitted} />
           <Label>Host</Label>
           <Text bold dimColor={submitted}>
             {host.name}
@@ -109,7 +145,7 @@ const WideReview: React.FC<ReviewStepProps> = ({
       </Box>
 
       <Box flexDirection="row">
-        <StatusIcon glyph={icons.tick} dim={submitted} />
+        <StatusIcon glyph={icons.tick} submitted={submitted} />
         <Label>Profile</Label>
         {profile === 'skip' ? (
           <Text dimColor>skipped · Chrome will not launch</Text>
@@ -118,12 +154,9 @@ const WideReview: React.FC<ReviewStepProps> = ({
             <Text bold dimColor={submitted}>
               {profile.name}
             </Text>
-            {profileStatusBlurb(profile.status) ? (
-              <Text
-                color={profileStatusColor(profile.status)}
-                dimColor={submitted}
-              >
-                {profileStatusBlurb(profile.status)}
+            {blurb ? (
+              <Text color={blurbColor} dimColor={submitted}>
+                {blurb}
               </Text>
             ) : null}
           </Box>
@@ -134,7 +167,7 @@ const WideReview: React.FC<ReviewStepProps> = ({
         {willLines.map((line, i) => (
           <Box key={i} flexDirection="row">
             {i === 0 ? (
-              <StatusIcon glyph="→" dim={submitted} />
+              <StatusIcon glyph={icons.arrowRight} submitted={submitted} />
             ) : (
               <StatusIconSpacer />
             )}
@@ -144,21 +177,7 @@ const WideReview: React.FC<ReviewStepProps> = ({
         ))}
       </Box>
 
-      {!submitted ? (
-        <Box flexDirection="column">
-          <Box
-            borderStyle="round"
-            borderColor={colors.primary}
-            paddingX={1}
-            alignSelf="flex-start"
-          >
-            <ArrowMarch />
-            <Text> </Text>
-            <Text color={colors.primary}>press ENTER</Text>
-          </Box>
-          <Text dimColor>← back</Text>
-        </Box>
-      ) : null}
+      {!submitted ? <CtaBlock bordered /> : null}
     </Box>
   );
 };
@@ -177,11 +196,7 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
   const iconColor = submitted ? undefined : colors.primary;
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column">
-        <BreathingText frozen={submitted}>
-          {submitted ? 'READY TO TUNNEL' : '▌ READY TO TUNNEL ▐'}
-        </BreathingText>
-      </Box>
+      <ReviewTitle submitted={submitted} />
 
       <Box flexDirection="column">
         <Text color={iconColor} dimColor={submitted}>
@@ -218,23 +233,14 @@ const NarrowReview: React.FC<ReviewStepProps> = ({
 
       <Box flexDirection="column">
         <Text color={iconColor} dimColor={submitted}>
-          → Will
+          {`${icons.arrowRight} Will`}
         </Text>
         {willLines.map((line, i) => (
           <Text key={i} dimColor={submitted}>{`· ${line}`}</Text>
         ))}
       </Box>
 
-      {!submitted ? (
-        <Box flexDirection="column">
-          <Box flexDirection="row">
-            <ArrowMarch />
-            <Text> </Text>
-            <Text color={colors.primary}>press ENTER</Text>
-          </Box>
-          <Text dimColor>← back</Text>
-        </Box>
-      ) : null}
+      {!submitted ? <CtaBlock bordered={false} /> : null}
     </Box>
   );
 };

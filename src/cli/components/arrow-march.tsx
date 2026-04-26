@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Text } from 'ink';
-import { colors } from './theme';
-
-const FRAMES = ['▷', '▶', '▶▶', '▶▶▶'] as const;
+import React from 'react';
+import { Box } from 'ink';
+import { Spinner } from './spinner';
+import { arrowMarchFrames, colors } from './theme';
 
 export interface ArrowMarchProps {
   color?: string;
@@ -13,18 +12,9 @@ export interface ArrowMarchProps {
 export const ArrowMarch: React.FC<ArrowMarchProps> = ({
   color = colors.primary,
   intervalMs = 250,
-  width = 3,
-}) => {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setFrame((f) => (f + 1) % FRAMES.length);
-    }, intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return (
-    <Box width={width}>
-      <Text color={color}>{FRAMES[frame]}</Text>
-    </Box>
-  );
-};
+  width = arrowMarchFrames[arrowMarchFrames.length - 1]!.length,
+}) => (
+  <Box width={width}>
+    <Spinner color={color} intervalMs={intervalMs} frames={arrowMarchFrames} />
+  </Box>
+);

@@ -21,6 +21,14 @@ export const icons = {
   pointerSmall: figures.pointerSmall,
   ellipsis: figures.ellipsis,
   bullet: figures.bullet,
+  arrowRight: '→',
+} as const;
+
+// Decorative bars flanking the review title. Kept here so future glyph
+// swaps don't require greping every consumer.
+export const decoration = {
+  titleBarLeft: '▌',
+  titleBarRight: '▐',
 } as const;
 
 export const spinnerFrames = [
@@ -35,6 +43,11 @@ export const spinnerFrames = [
   '⠇',
   '⠏',
 ];
+
+// Arrow march cycles a 1→2→3-glyph build-up to point at a CTA.
+// Widths intentionally vary to create the "marching forward" effect;
+// callers wrap this in a fixed-width Box to absorb the variance.
+export const arrowMarchFrames = ['▷', '▶', '▶▶', '▶▶▶'];
 
 export const breathing = {
   primary: { base: '#005f87', peak: '#5fffff' },
