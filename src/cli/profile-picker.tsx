@@ -51,6 +51,7 @@ export interface ProfilePickerProps {
   onUiChange: (patch: Partial<PickerUiState>) => void;
   onPick: (selection: ProfileInfo | 'skip') => void;
   creator?: (name: string) => ProfileInfo;
+  selected?: ProfileInfo | 'skip' | null;
 }
 
 export const ProfilePicker: React.FC<ProfilePickerProps> = ({
@@ -59,6 +60,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   onUiChange,
   onPick,
   creator = createProfile,
+  selected = null,
 }) => {
   const rows: ListRow[] = [
     ...profiles.map((p) => ({ kind: 'profile' as const, profile: p })),
@@ -78,15 +80,30 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
 
   React.useEffect(() => {
     if (!initialFocusSet.current) {
-      // Initial focus: skip busy profiles. After this just clamp on out-of-range.
+      // Initial focus: prefer selected row (back-nav from review),
+      // else first non-busy profile, else input row.
       const firstEnabled = profiles.findIndex((p) => p.status !== 'busy');
-      const idx = firstEnabled === -1 ? inputRowIndex : firstEnabled;
+      const fallback = firstEnabled === -1 ? inputRowIndex : firstEnabled;
+      let idx = fallback;
+      if (selected === 'skip') {
+        idx = skipRowIndex;
+      } else if (selected) {
+        const found = profiles.findIndex((p) => p.name === selected.name);
+        if (found >= 0) idx = found;
+      }
       initialFocusSet.current = true;
       if (ui.index !== idx) onUiChange({ index: idx });
       return;
     }
     if (ui.index > skipRowIndex) onUiChange({ index: skipRowIndex });
-  }, [profiles.length, inputRowIndex, skipRowIndex, ui.index, onUiChange]);
+  }, [
+    profiles,
+    inputRowIndex,
+    skipRowIndex,
+    ui.index,
+    onUiChange,
+    selected,
+  ]);
 
   React.useEffect(() => {
     if (!onInput) setError(null);

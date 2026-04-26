@@ -29,11 +29,33 @@ describe('wizardReducer', () => {
     expect(s.host).toEqual(HOST);
   });
 
+  test('next from host clears hostPicker input/cursor but keeps index', () => {
+    const s0: WizardState = {
+      ...initialWizardState(),
+      hostPicker: { index: 3, input: 'root@example.com', cursor: 16 },
+    };
+    const s1 = wizardReducer(s0, { type: 'next', payload: HOST });
+    expect(s1.hostPicker).toEqual({ index: 3, input: '', cursor: 0 });
+  });
+
   test('next from profile (with profile) advances to review', () => {
     const s0 = wizardReducer(initialWizardState(), { type: 'next', payload: HOST });
     const s1 = wizardReducer(s0, { type: 'next', payload: PROFILE });
     expect(s1.step).toBe('review');
     expect(s1.profile).toEqual(PROFILE);
+  });
+
+  test('next from profile clears profilePicker input/cursor but keeps index', () => {
+    let s: WizardState = wizardReducer(initialWizardState(), {
+      type: 'next',
+      payload: HOST,
+    });
+    s = {
+      ...s,
+      profilePicker: { index: 2, input: 'test2', cursor: 5 },
+    };
+    s = wizardReducer(s, { type: 'next', payload: PROFILE });
+    expect(s.profilePicker).toEqual({ index: 2, input: '', cursor: 0 });
   });
 
   test("next from profile with 'skip' stores 'skip' and advances", () => {

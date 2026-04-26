@@ -102,6 +102,7 @@ export const Wizard: React.FC<WizardProps> = ({
           ui={state.hostPicker}
           onUiChange={onHostUiChange}
           onPick={(host) => dispatch({ type: 'next', payload: host })}
+          selected={state.host}
         />
       );
     }
@@ -113,6 +114,7 @@ export const Wizard: React.FC<WizardProps> = ({
           onUiChange={onProfileUiChange}
           onPick={(p) => dispatch({ type: 'next', payload: p })}
           creator={creator}
+          selected={state.profile}
         />
       );
     }

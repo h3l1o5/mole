@@ -45,13 +45,19 @@ export function wizardReducer(
   switch (action.type) {
     case 'next': {
       if (state.step === 'host') {
-        return { ...state, step: 'profile', host: action.payload as SshHost };
+        return {
+          ...state,
+          step: 'profile',
+          host: action.payload as SshHost,
+          hostPicker: { ...state.hostPicker, input: '', cursor: 0 },
+        };
       }
       if (state.step === 'profile') {
         return {
           ...state,
           step: 'review',
           profile: action.payload as ProfileInfo | 'skip',
+          profilePicker: { ...state.profilePicker, input: '', cursor: 0 },
         };
       }
       return state;

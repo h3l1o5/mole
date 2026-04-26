@@ -16,6 +16,7 @@ export interface HostPickerProps {
   ui: PickerUiState;
   onUiChange: (patch: Partial<PickerUiState>) => void;
   onPick: (host: SshHost) => void;
+  selected?: SshHost | null;
 }
 
 export const HostPicker: React.FC<HostPickerProps> = ({
@@ -23,10 +24,25 @@ export const HostPicker: React.FC<HostPickerProps> = ({
   ui,
   onUiChange,
   onPick,
+  selected = null,
 }) => {
   const inputRowIndex = hosts.length;
   const onInput = ui.index === inputRowIndex;
+  const initialFocusSet = React.useRef(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!initialFocusSet.current) {
+      // Initial focus: align to selected host (back-nav), else 0.
+      let idx = 0;
+      if (selected) {
+        const found = hosts.findIndex((h) => h.name === selected.name);
+        idx = found >= 0 ? found : inputRowIndex;
+      }
+      initialFocusSet.current = true;
+      if (ui.index !== idx) onUiChange({ index: idx });
+    }
+  }, [hosts, inputRowIndex, ui.index, onUiChange, selected]);
 
   React.useEffect(() => {
     if (!onInput) setError(null);
