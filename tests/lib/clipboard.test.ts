@@ -45,6 +45,27 @@ describe('createCachedReader', () => {
     expect(calls).toBe(2);
   });
 
+  test('TTL boundary: re-reads exactly when elapsed === ttlMs (the < cutoff)', async () => {
+    let calls = 0;
+    let mockNow = 1000;
+    const reader = async (): Promise<ClipboardResult> => {
+      calls++;
+      return empty;
+    };
+    const cached = createCachedReader(reader, 500, () => mockNow);
+    await cached();
+    expect(calls).toBe(1);
+    // Cache lookup uses `t - cachedAt < ttlMs`. At exactly ttlMs the
+    // cache must miss — it's the boundary, not a fence.
+    mockNow += 500;
+    await cached();
+    expect(calls).toBe(2);
+    // One tick before the boundary still hits.
+    mockNow += 499;
+    await cached();
+    expect(calls).toBe(2);
+  });
+
   test('concurrent calls share a single in-flight invocation', async () => {
     let calls = 0;
     let release!: () => void;
