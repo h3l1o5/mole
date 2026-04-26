@@ -3,8 +3,9 @@ import {
   initialPreflightSteps,
   runPreflightStepsWith,
   type PreflightDeps,
+  type SetStep,
 } from '../../src/cli/preflight-runner';
-import type { PreflightStep } from '../../src/cli/preflight';
+import type { PreflightStep, PreflightStepId } from '../../src/cli/preflight';
 import type { SshHost } from '../../src/lib/ssh-config';
 import type { ProfileInfo } from '../../src/lib/chrome-profile';
 
@@ -15,22 +16,22 @@ const PROFILE = (
 ): ProfileInfo => ({ name: 'work', path: '/p/work', status, pid });
 
 interface Trace {
-  steps: Map<string, Partial<PreflightStep>>;
-  order: Array<{ id: string; patch: Partial<PreflightStep> }>;
+  steps: Map<PreflightStepId, Partial<PreflightStep>>;
+  order: Array<{ id: PreflightStepId; patch: Partial<PreflightStep> }>;
   chromeLaunched: boolean;
   sleeps: number[];
 }
 
 const harness = (
   over: Partial<PreflightDeps> = {},
-): { setStep: (id: string, patch: Partial<PreflightStep>) => void; trace: Trace; deps: PreflightDeps } => {
+): { setStep: SetStep; trace: Trace; deps: PreflightDeps } => {
   const trace: Trace = {
     steps: new Map(),
     order: [],
     chromeLaunched: false,
     sleeps: [],
   };
-  const setStep = (id: string, patch: Partial<PreflightStep>) => {
+  const setStep: SetStep = (id, patch) => {
     trace.order.push({ id, patch });
     const prev = trace.steps.get(id) ?? {};
     trace.steps.set(id, { ...prev, ...patch });
@@ -177,7 +178,6 @@ describe('runPreflightStepsWith — warning surfacing', () => {
     expect(result).toEqual({ ok: true });
     expect(trace.steps.get('remote')!.state).toBe('ok');
     expect(trace.steps.get('remote')!.warning).toMatch(/cannot read sshd config/);
-    // Warning triggers the 1500ms pause so the user sees it.
     expect(trace.sleeps).toContain(1500);
   });
 

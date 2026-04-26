@@ -11,14 +11,8 @@ const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
 const VALIDATION_ERROR = 'Use format user@hostname (e.g. root@example.com)';
 const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
 
-// Returns null when the trimmed input is a valid user@host. Returns a
-// user-facing error message otherwise. Empty input returns null so the
-// picker can quietly ignore Enter on a blank field.
 export function validateUserHost(input: string): string | null {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) return null;
-  if (!USER_HOST_RE.test(trimmed)) return VALIDATION_ERROR;
-  return null;
+  return USER_HOST_RE.test(input) ? null : VALIDATION_ERROR;
 }
 
 export interface HostPickerProps {

@@ -8,8 +8,6 @@ export interface HijackWatchdogOptions {
   isStopped: () => boolean;
 }
 
-// Two consecutive mismatches → fire. 'ok' or 'unreachable' both reset
-// — transient ssh blips shouldn't accumulate toward a false positive.
 export function evaluateStrike(
   prev: number,
   result: CheckResult,

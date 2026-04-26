@@ -1,7 +1,4 @@
-export type FetchFn = (
-  url: string,
-  init?: RequestInit & { unix?: string },
-) => Promise<Response>;
+import type { FetchFn } from './daemon-health';
 
 // Asks the local daemon for its client id over the unix socket.
 // Returns null if the daemon is unreachable, replies non-OK, or the
