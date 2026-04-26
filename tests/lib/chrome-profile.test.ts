@@ -79,6 +79,20 @@ describe('checkProfileStatus', () => {
     }
   });
 
+  test('lock pointing at live pid + cmdline lookup fails (null) → busy (safe fallback)', async () => {
+    // Falls back to busy rather than reusable so we never accidentally
+    // attach to a regular Chrome with no debug port.
+    const dir = makeTempProfile();
+    try {
+      symlinkSync(`host-${process.pid}`, join(dir, 'SingletonLock'));
+      const r = await checkProfileStatus(dir, async () => null);
+      expect(r.status).toBe('busy');
+      expect(r.pid).toBe(process.pid);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test('lock pointing at live pid with debug port → reusable', async () => {
     const dir = makeTempProfile();
     try {
