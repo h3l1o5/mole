@@ -1,6 +1,11 @@
 import { test, expect, describe } from 'bun:test';
 import figures from 'figures';
-import { colors, icons, spinnerFrames } from '../../../src/cli/components/theme';
+import {
+  colors,
+  icons,
+  spinnerFrames,
+  breathing,
+} from '../../../src/cli/components/theme';
 
 describe('theme', () => {
   test('colors exposes the five semantic slots used by the design language', () => {
@@ -28,5 +33,10 @@ describe('theme', () => {
   test('spinnerFrames is a non-empty animation sequence', () => {
     expect(Array.isArray(spinnerFrames)).toBe(true);
     expect(spinnerFrames.length).toBeGreaterThan(4);
+  });
+
+  test('breathing exposes a primary keyframe pair as 6-digit hex strings', () => {
+    expect(breathing.primary.base).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(breathing.primary.peak).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 });

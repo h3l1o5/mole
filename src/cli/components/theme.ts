@@ -35,3 +35,7 @@ export const spinnerFrames = [
   '⠇',
   '⠏',
 ];
+
+export const breathing = {
+  primary: { base: '#005f87', peak: '#5fffff' },
+} as const;
