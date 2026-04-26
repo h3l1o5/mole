@@ -156,10 +156,7 @@ async function main() {
     process.exit(1);
   }
 
-  // Hand the TTY off to ssh cleanly. ink leaves stdin in raw mode on
-  // unmount; if the Bun parent keeps reading stdin it races with the
-  // ssh child and input feels completely stuck. So: reset termios,
-  // detach our stdin, then spawn ssh via node:child_process.
+  // ink left stdin in raw mode; reset before ssh inherits fd 0.
   if (process.stdin.isTTY) process.stdin.setRawMode(false);
   process.stdin.pause();
   process.stdin.unref();
@@ -170,6 +167,9 @@ async function main() {
   const ourId = await fetchOurId(socketPath);
 
   const ssh = spawnSsh({ host: host.name });
+  // pause/unref leaves Bun's read pump on fd 0; it races ssh on every
+  // keystroke. ssh keeps its own dup via stdio:'inherit'.
+  process.stdin.destroy();
   let sshExited = false;
   let hijacked = false;
   const sshExit = new Promise<{
