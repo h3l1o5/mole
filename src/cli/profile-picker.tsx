@@ -40,7 +40,6 @@ const statusColor = (s: ProfileStatus): string | undefined => {
   }
 };
 
-// Sentinel for the "Skip Chrome" row. Position: always last (after manual entry).
 type ListRow =
   | { kind: 'profile'; profile: ProfileInfo }
   | { kind: 'manualInput' }
@@ -79,8 +78,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
 
   React.useEffect(() => {
     if (!initialFocusSet.current) {
-      // Park cursor on first non-busy row so the user doesn't start on
-      // a disabled item. After this we just clamp on out-of-range.
+      // Initial focus: skip busy profiles. After this just clamp on out-of-range.
       const firstEnabled = profiles.findIndex((p) => p.status !== 'busy');
       const idx = firstEnabled === -1 ? inputRowIndex : firstEnabled;
       initialFocusSet.current = true;
@@ -162,7 +160,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           Select a <Text color={colors.primary}>Chrome profile</Text> to launch.
         </Text>
         <Text dimColor>
-          These live in ~/.chrome-profiles/. Or create / skip below.
+          Live in ~/.chrome-profiles — or create / skip below
         </Text>
       </Box>
       <Box flexDirection="column">
