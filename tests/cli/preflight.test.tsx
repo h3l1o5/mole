@@ -47,7 +47,7 @@ describe('PreflightView', () => {
   test('error sub-row aligns with the main label start (5 leading cells)', () => {
     const { lastFrame, unmount } = render(
       <PreflightView
-        steps={[{ id: 'r', label: 'L', state: 'error', error: 'ERR' }]}
+        steps={[{ id: 'remote', label: 'L', state: 'error', error: 'ERR' }]}
       />,
     );
     const out = lastFrame()!;

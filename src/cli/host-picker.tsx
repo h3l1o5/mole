@@ -36,16 +36,15 @@ export const HostPicker: React.FC<HostPickerProps> = ({
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!initialFocusSet.current) {
-      // Initial focus: align to selected host (back-nav), else 0.
-      let idx = 0;
-      if (selected) {
-        const found = hosts.findIndex((h) => h.name === selected.name);
-        idx = found >= 0 ? found : inputRowIndex;
-      }
-      initialFocusSet.current = true;
-      if (ui.index !== idx) onUiChange({ index: idx });
-    }
+    if (initialFocusSet.current) return;
+    initialFocusSet.current = true;
+    // Only realign when arriving with a prior selection (back-nav from
+    // review). On the initial mount with no selection we leave ui.index
+    // alone so the wizard reducer / caller stays in control.
+    if (!selected) return;
+    const found = hosts.findIndex((h) => h.name === selected.name);
+    const idx = found >= 0 ? found : inputRowIndex;
+    if (ui.index !== idx) onUiChange({ index: idx });
   }, [hosts, inputRowIndex, ui.index, onUiChange, selected]);
 
   React.useEffect(() => {
