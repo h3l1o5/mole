@@ -24,6 +24,19 @@ export interface WizardSubmitPayload {
   profile: ProfileInfo | 'skip';
 }
 
+// True when the picker's manual-entry input row is selected: keys
+// belong to the TextInput cursor, not step navigation.
+function isPickerInInputMode(
+  state: WizardState,
+  hostsLen: number,
+  profilesLen: number,
+): boolean {
+  if (state.step === 'host') return state.hostPicker.index === hostsLen;
+  if (state.step === 'profile')
+    return state.profilePicker.index === profilesLen;
+  return false;
+}
+
 export interface WizardProps {
   hosts?: SshHost[];
   scanner?: ProfileScanner;
@@ -53,20 +66,11 @@ export const Wizard: React.FC<WizardProps> = ({
   const sshHosts = React.useMemo(() => hosts ?? loadSshHosts(), [hosts]);
   const profiles = useProfiles(scanner, scanIntervalMs);
 
-  // Reaching the manual-entry input row in either picker means ←/→/etc
-  // belong to the TextInput, not to step navigation. Both the picker's
-  // and Wizard's useInput fire on the same event; the picker consumes
-  // the key for cursor movement, and we MUST refrain from also dispatching
-  // a back action.
-  const inInputMode = (() => {
-    if (state.step === 'host') {
-      return state.hostPicker.index === sshHosts.length;
-    }
-    if (state.step === 'profile') {
-      return state.profilePicker.index === profiles.length;
-    }
-    return false;
-  })();
+  const inInputMode = isPickerInInputMode(
+    state,
+    sshHosts.length,
+    profiles.length,
+  );
 
   useInput((input, key) => {
     if (state.submitted) return;
