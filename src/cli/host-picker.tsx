@@ -11,6 +11,16 @@ const PLACEHOLDER = 'Enter manually… (e.g. user@hostname)';
 const VALIDATION_ERROR = 'Use format user@hostname (e.g. root@example.com)';
 const USER_HOST_RE = /^[^@\s]+@[^@\s]+$/;
 
+// Returns null when the trimmed input is a valid user@host. Returns a
+// user-facing error message otherwise. Empty input returns null so the
+// picker can quietly ignore Enter on a blank field.
+export function validateUserHost(input: string): string | null {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) return null;
+  if (!USER_HOST_RE.test(trimmed)) return VALIDATION_ERROR;
+  return null;
+}
+
 export interface HostPickerProps {
   hosts: SshHost[];
   ui: PickerUiState;
@@ -65,8 +75,9 @@ export const HostPicker: React.FC<HostPickerProps> = ({
       if (onInput) {
         const trimmed = ui.input.trim();
         if (trimmed.length === 0) return;
-        if (!USER_HOST_RE.test(trimmed)) {
-          setError(VALIDATION_ERROR);
+        const err = validateUserHost(trimmed);
+        if (err) {
+          setError(err);
           return;
         }
         onPick({ name: trimmed });
