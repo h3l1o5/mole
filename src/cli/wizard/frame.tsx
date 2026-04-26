@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, useStdout } from 'ink';
-import { computeWizardWidth, isFallbackMode } from './layout';
+import { computeWizardWidth, isFallbackMode } from './width';
 
 export interface WizardFrameProps {
   frozen?: boolean;

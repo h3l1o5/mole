@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { colors } from '../components/theme';
-import { layoutBreadcrumb, type BreadcrumbSegment } from './layout';
+import { layoutBreadcrumb, type BreadcrumbSegment } from './breadcrumb-layout';
 import type { WizardStep } from './reducer';
 
 export interface BreadcrumbProps {
