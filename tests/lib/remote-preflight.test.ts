@@ -35,14 +35,13 @@ describe('buildPreflightScript', () => {
 });
 
 describe('runPreflightWith', () => {
-  test('returns ok with socat pid on success', async () => {
+  test('returns ok on success', async () => {
     const r = await runPreflightWith('host', async () => ({
-      stdout: '12345\n',
+      stdout: '',
       stderr: '',
       code: 0,
     }));
     expect(r.ok).toBe(true);
-    expect(r.socatPid).toBe(12345);
   });
 
   test('returns not ok with errors on non-zero exit', async () => {

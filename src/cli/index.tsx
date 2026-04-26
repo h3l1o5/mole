@@ -9,13 +9,11 @@ import type { ProfileInfo } from '../lib/chrome-profile';
 import { launchChrome } from '../lib/chrome-launcher';
 import { isDaemonHealthy } from '../lib/daemon-health';
 import { runPreflight } from '../lib/remote-preflight';
-import { runCleanup } from '../lib/remote-cleanup';
 import { spawnSsh } from '../lib/ssh-session';
 import { buildNonInteractiveSshArgs } from '../lib/ssh-spawn';
 import { checkOnce } from './watchdog';
 
 interface PreflightRunResult {
-  socatPid?: number;
   ok: boolean;
 }
 
@@ -63,7 +61,7 @@ async function runPreflightSteps(
     }
   }
 
-  return { ok: true, socatPid: r.socatPid };
+  return { ok: true };
 }
 
 const initialPreflightSteps = (
@@ -217,20 +215,6 @@ async function main() {
     );
   }
 
-  if (result.pre.socatPid !== undefined) {
-    const r = await runCleanup(host.name, result.pre.socatPid).catch((e) => ({
-      ok: false as const,
-      error: e instanceof Error ? e.message : String(e),
-    }));
-    if (r.ok) {
-      process.stderr.write('\x1b[2m[mole] remote socat cleaned up.\x1b[0m\r\n');
-    } else {
-      process.stderr.write(
-        `\x1b[33m[mole] cleanup failed: ${r.error ?? 'unknown'}. ` +
-          `socat pid ${result.pre.socatPid} may still be running on ${host.name}.\x1b[0m\r\n`,
-      );
-    }
-  }
 }
 
 async function fetchOurId(socketPath: string): Promise<string | null> {
@@ -299,7 +283,11 @@ function startHijackWatchdog(opts: {
   })();
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Explicit exit so the hijack watchdog's pending setTimeout doesn't
+// keep the event loop alive after ssh disconnect.
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

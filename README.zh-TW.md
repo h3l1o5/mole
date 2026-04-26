@@ -122,7 +122,8 @@ mole
 3. 三個 preflight 步驟會轉綠:Chrome、Mac daemon、Remote preflight。
 4. 進入遠端 shell。Claude Code 按 `Ctrl+V` 直接貼 Mac 剪貼簿;remote 端的
    `http://localhost:9222` 就是你的 Mac Chrome。
-5. 完成後在遠端打 `exit`。`mole` 會自動關掉 remote socat,安靜回到 Mac shell。
+5. 完成後在遠端打 `exit`,直接回到 Mac shell。Remote socat bridge 會留在
+   遠端 idle,下次 `mole` 連線時自動重用。
 
 ## 在多台 Mac 之間切換
 

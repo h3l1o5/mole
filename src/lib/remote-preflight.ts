@@ -9,7 +9,6 @@ export interface PreflightResult {
   ok: boolean;
   errors: string[];
   warnings: string[];
-  socatPid?: number;
 }
 
 export function buildPreflightScript(opts: PreflightOptions = {}): string {
@@ -40,7 +39,6 @@ if ! pgrep -f 'socat.*mole-chrome' >/dev/null 2>&1; then
   nohup socat TCP-LISTEN:${port},bind=127.0.0.1,reuseaddr,fork UNIX-CONNECT:${sock} >/dev/null 2>&1 </dev/null &
   sleep 0.2
 fi
-pgrep -f 'socat.*mole-chrome' | head -1
 `.trim();
 }
 
@@ -55,7 +53,7 @@ export async function runPreflightWith(
   opts: PreflightOptions = {},
 ): Promise<PreflightResult> {
   const script = buildPreflightScript(opts);
-  const { stdout, stderr, code } = await runner(host, script);
+  const { stderr, code } = await runner(host, script);
   const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean);
   const warnings = lines
     .filter((l) => l.startsWith('MOLE_WARN:'))
@@ -64,13 +62,7 @@ export async function runPreflightWith(
   if (code !== 0) {
     return { ok: false, errors, warnings };
   }
-  const pid = parseInt(stdout.trim(), 10);
-  return {
-    ok: true,
-    errors: [],
-    warnings,
-    socatPid: Number.isFinite(pid) ? pid : undefined,
-  };
+  return { ok: true, errors: [], warnings };
 }
 
 export async function runPreflight(

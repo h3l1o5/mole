@@ -132,8 +132,9 @@ mole
 4. You are dropped into the remote shell. `Ctrl+V` in Claude Code pastes
    your Mac clipboard. `http://localhost:9222` on the remote is your Mac
    Chrome.
-5. When you are done, type `exit`. `mole` kills the remote socat bridge
-   and returns you to your Mac shell silently.
+5. When you are done, type `exit`. You drop straight back to your Mac
+   shell. The remote socat bridge stays running idle and is reused by
+   the next `mole` connection.
 
 ## Switching between Macs
 
