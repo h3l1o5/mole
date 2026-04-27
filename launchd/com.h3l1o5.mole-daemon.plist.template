@@ -21,7 +21,7 @@
         <key>MOLE_SOCKET</key>
         <string>/tmp/mole-clip.sock</string>
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>@PATH@</string>
     </dict>
 
     <key>StandardOutPath</key>

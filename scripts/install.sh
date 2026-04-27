@@ -31,6 +31,7 @@ echo "Installed: $BIN_DIR/mole, $BIN_DIR/mole-daemon, $BIN_DIR/mole-pasteboard"
 sed \
   -e "s|@BIN@|$BIN_DIR/mole-daemon|g" \
   -e "s|@LOG@|$LOG_DIR|g" \
+  -e "s|@PATH@|$BIN_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin|g" \
   "$ROOT/launchd/${LABEL}.plist.template" > "$PLIST"
 echo "Installed plist: $PLIST"
 
