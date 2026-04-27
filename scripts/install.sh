@@ -8,11 +8,11 @@ LA_DIR="$HOME/Library/LaunchAgents"
 LABEL="com.h3l1o5.mole-daemon"
 PLIST="$LA_DIR/${LABEL}.plist"
 
-for cmd in pngpaste open launchctl; do
+for cmd in swiftc open launchctl; do
   command -v "$cmd" >/dev/null 2>&1 || {
     echo "ERROR: missing command: $cmd" >&2
-    if [ "$cmd" = "pngpaste" ]; then
-      echo "Install with: brew install pngpaste" >&2
+    if [ "$cmd" = "swiftc" ]; then
+      echo "Install Xcode Command Line Tools: xcode-select --install" >&2
     fi
     exit 1
   }
@@ -23,8 +23,9 @@ done
 mkdir -p "$BIN_DIR" "$LOG_DIR" "$LA_DIR"
 cp "$ROOT/dist/mole" "$BIN_DIR/mole"
 cp "$ROOT/dist/mole-daemon" "$BIN_DIR/mole-daemon"
-chmod +x "$BIN_DIR/mole" "$BIN_DIR/mole-daemon"
-echo "Installed: $BIN_DIR/mole, $BIN_DIR/mole-daemon"
+cp "$ROOT/dist/mole-pasteboard" "$BIN_DIR/mole-pasteboard"
+chmod +x "$BIN_DIR/mole" "$BIN_DIR/mole-daemon" "$BIN_DIR/mole-pasteboard"
+echo "Installed: $BIN_DIR/mole, $BIN_DIR/mole-daemon, $BIN_DIR/mole-pasteboard"
 
 # generate plist from template
 sed \

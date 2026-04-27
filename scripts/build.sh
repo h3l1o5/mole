@@ -22,5 +22,8 @@ bun build \
   --outfile=dist/mole-daemon \
   src/daemon/main.ts
 
+echo "Building mole-pasteboard..."
+swiftc -O -o dist/mole-pasteboard native/mole-pasteboard.swift
+
 echo "Done. Binaries in dist/"
 ls -la dist/

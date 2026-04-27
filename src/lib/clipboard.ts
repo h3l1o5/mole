@@ -46,7 +46,7 @@ export function createCachedReader(
 
 export async function readClipboard(): Promise<ClipboardResult> {
   return readClipboardWith(async () => {
-    const proc = Bun.spawn(['pngpaste', '-'], {
+    const proc = Bun.spawn(['mole-pasteboard'], {
       stdout: 'pipe',
       stderr: 'ignore',
     });
