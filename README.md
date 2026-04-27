@@ -37,7 +37,7 @@ Three data paths share one SSH connection:
 
 | Path         | Direction                                                  | Purpose            |
 | ------------ | ---------------------------------------------------------- | ------------------ |
-| Clipboard    | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `pngpaste` | read Mac clipboard |
+| Clipboard    | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `mole-pasteboard` | read Mac clipboard |
 | Chrome CDP   | remote `localhost:9222` → `socat` → SSH tunnel → Mac `:9222` → Chrome  | control Mac Chrome |
 | Shell        | keyboard ↔ `ssh` (stdio inherit) ↔ remote shell            | normal SSH session |
 
@@ -47,12 +47,12 @@ Full design: [`docs/2026-04-24-mole-design.md`](docs/2026-04-24-mole-design.md).
 
 ### Mac (local)
 
-| Item          | Minimum                        |
-| ------------- | ------------------------------ |
-| macOS         | 13 (Ventura)                   |
-| Bun           | 1.1 (build only)               |
-| `pngpaste`    | `brew install pngpaste`        |
-| Google Chrome | any recent version             |
+| Item                 | Minimum                                       |
+| -------------------- | --------------------------------------------- |
+| macOS                | 13 (Ventura)                                  |
+| Bun                  | 1.1 (build only)                              |
+| Xcode CLT (`swiftc`) | `xcode-select --install` (build only)         |
+| Google Chrome        | any recent version                            |
 
 ### Linux (remote)
 
@@ -90,8 +90,8 @@ bun run build
 
 The installer will:
 
-1. Verify that `pngpaste`, `open`, and `launchctl` are available.
-2. Copy `mole` and `mole-daemon` to `~/.local/bin/`.
+1. Verify that `swiftc`, `open`, and `launchctl` are available.
+2. Copy `mole`, `mole-daemon`, and `mole-pasteboard` to `~/.local/bin/`.
 3. Install and load the launchd agent (`com.h3l1o5.mole-daemon`).
 4. Ping the daemon to confirm it is serving on `/tmp/mole-clip.sock`.
 

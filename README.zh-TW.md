@@ -32,7 +32,7 @@ SSH session。
 
 | 路徑        | 方向                                                                         | 作用            |
 | ----------- | ---------------------------------------------------------------------------- | --------------- |
-| 剪貼簿      | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `pngpaste`       | 讀取 Mac 剪貼簿 |
+| 剪貼簿      | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `mole-pasteboard` | 讀取 Mac 剪貼簿 |
 | Chrome CDP  | remote `localhost:9222` → `socat` → SSH tunnel → Mac `:9222` → Chrome        | 操作 Mac Chrome |
 | Shell       | 鍵盤 ↔ `ssh`(stdio inherit)↔ remote shell                                    | 一般 SSH 體驗   |
 
@@ -42,12 +42,12 @@ SSH session。
 
 ### Mac(本機)
 
-| 項目          | 最低版本                |
-| ------------- | ----------------------- |
-| macOS         | 13(Ventura)             |
-| Bun           | 1.1(只在 build 時)      |
-| `pngpaste`    | `brew install pngpaste` |
-| Google Chrome | 任何近期版本            |
+| 項目                 | 最低版本                                |
+| -------------------- | --------------------------------------- |
+| macOS                | 13(Ventura)                             |
+| Bun                  | 1.1(只在 build 時)                      |
+| Xcode CLT(`swiftc`)  | `xcode-select --install`(只在 build 時) |
+| Google Chrome        | 任何近期版本                            |
 
 ### Linux(遠端)
 
@@ -84,8 +84,8 @@ bun run build
 
 安裝腳本會:
 
-1. 確認 `pngpaste`、`open`、`launchctl` 存在。
-2. 把 `mole` 與 `mole-daemon` 複製到 `~/.local/bin/`。
+1. 確認 `swiftc`、`open`、`launchctl` 存在。
+2. 把 `mole`、`mole-daemon`、`mole-pasteboard` 複製到 `~/.local/bin/`。
 3. 安裝並載入 launchd agent(`com.h3l1o5.mole-daemon`)。
 4. Ping daemon,確認它在 `/tmp/mole-clip.sock` 上服務。
 
