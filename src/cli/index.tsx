@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { closeSync } from 'node:fs';
 import React, { useState, useEffect, useRef } from 'react';
 import { render } from 'ink';
 import { Wizard, type WizardState, type WizardSubmitPayload } from './wizard';
@@ -96,11 +95,9 @@ async function main() {
   const ourId = await fetchOurId(socketPath);
 
   const ssh = spawnSsh({ host: host.name });
-  // ssh inherits a dup of fd 0; the parent must let go fully or the
-  // two race per keystroke. destroy() drops the JS Readable,
-  // closeSync(0) drops Bun's OS-level read pump.
+  // pause/unref leaves Bun's read pump on fd 0; it races ssh on every
+  // keystroke. ssh keeps its own dup via stdio:'inherit'.
   process.stdin.destroy();
-  try { closeSync(0); } catch {}
   let sshExited = false;
   let hijacked = false;
   const sshExit = new Promise<{
