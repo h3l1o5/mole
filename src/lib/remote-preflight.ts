@@ -8,6 +8,7 @@ export type PreflightOutcome =
   | { kind: 'shim-outdated'; remoteHash: string }
   | { kind: 'socat-missing'; distro: Distro }
   | { kind: 'sshd-config-missing' }
+  | { kind: 'auth-failed' }
   | { kind: 'error'; errors: string[] };
 
 export interface PreflightOptions {
@@ -113,6 +114,13 @@ export async function runPreflightWith(
 
   if (code === 0) {
     return { kind: 'ok', warnings };
+  }
+
+  if (
+    code === 255 &&
+    lines.some((l) => /Permission denied|Authentication failed/i.test(l))
+  ) {
+    return { kind: 'auth-failed' };
   }
 
   const errors = lines.filter(

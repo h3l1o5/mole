@@ -213,6 +213,29 @@ describe('runPreflightStepsWith — failure short-circuit', () => {
     expect(trace.steps.get('remote')!.error).toMatch(/StreamLocalBindUnlink/);
   });
 
+  test('auth-failed → ssh-copy-id hint, no install attempt', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'auth-failed' };
+      },
+    });
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      setStep,
+      deps,
+    );
+    expect(result).toEqual({ ok: false });
+    expect(trace.steps.get('remote')!.state).toBe('error');
+    const err = trace.steps.get('remote')!.error!;
+    expect(err).toMatch(/ssh authentication failed/i);
+    expect(err).toMatch(/non-interactive/);
+    expect(err).toMatch(/ssh-add/);
+    expect(err).toMatch(/ssh-copy-id/);
+    expect(err).toContain('vbm');
+    expect(trace.installCalls).toBe(0);
+  });
+
   test('error kind → joined stderr', async () => {
     const { setStep, trace, deps } = harness({
       runPreflight: async () => {

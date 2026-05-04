@@ -60,6 +60,13 @@ const SSHD_HINT =
   "remote sshd missing 'StreamLocalBindUnlink yes'. Fix: " +
   "echo 'StreamLocalBindUnlink yes' | sudo tee -a /etc/ssh/sshd_config && sudo systemctl reload ssh.service";
 
+const authHint = (host: string): string =>
+  'ssh authentication failed. mole needs non-interactive auth ' +
+  '(key, agent, or cert) — password-only login is not supported.\n\n' +
+  'Quick fix:\n' +
+  '  ssh-add ~/.ssh/id_ed25519\n' +
+  `  ssh-copy-id ${host}`;
+
 async function handleRemoteOutcome(
   host: string,
   setStep: SetStep,
@@ -80,6 +87,10 @@ async function handleRemoteOutcome(
     }
     case 'sshd-config-missing': {
       setStep('remote', { state: 'error', error: SSHD_HINT });
+      return { ok: false };
+    }
+    case 'auth-failed': {
+      setStep('remote', { state: 'error', error: authHint(host) });
       return { ok: false };
     }
     case 'error': {

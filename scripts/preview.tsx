@@ -252,6 +252,34 @@ const preflightCases: Case[] = [
         />,
       ),
   },
+  {
+    view: 'preflight',
+    name: 'ssh auth failed — multi-line guidance',
+    run: () =>
+      snapshot(
+        <PreflightView
+          steps={[
+            { id: 'daemon', label: 'Mac daemon', state: 'ok' },
+            {
+              id: 'remote',
+              label: 'Remote preflight (myhost)',
+              state: 'error',
+              error:
+                'ssh authentication failed. mole needs non-interactive auth ' +
+                '(key, agent, or cert) — password-only login is not supported.\n\n' +
+                'Quick fix:\n' +
+                '  ssh-add ~/.ssh/id_ed25519\n' +
+                '  ssh-copy-id myhost',
+            },
+            {
+              id: 'chrome',
+              label: 'Chrome (profile: work)',
+              state: 'pending',
+            },
+          ]}
+        />,
+      ),
+  },
 ];
 
 const sampleHosts: SshHost[] = [

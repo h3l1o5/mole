@@ -156,6 +156,64 @@ describe('runPreflightWith', () => {
     expect(r).toEqual({ kind: 'sshd-config-missing' });
   });
 
+  test('classifies auth-failed when ssh exits 255 with Permission denied', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'host: Permission denied (publickey).\n',
+        code: 255,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'auth-failed' });
+  });
+
+  test('classifies auth-failed when ssh exits 255 with Authentication failed', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'Authentication failed.\n',
+        code: 255,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'auth-failed' });
+  });
+
+  test('keeps connection refused as raw error, not auth-failed', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'ssh: connect to host x port 22: Connection refused\n',
+        code: 255,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({
+      kind: 'error',
+      errors: ['ssh: connect to host x port 22: Connection refused'],
+    });
+  });
+
+  test('keeps host key verification failure as raw error, not auth-failed', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'Host key verification failed.\n',
+        code: 255,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({
+      kind: 'error',
+      errors: ['Host key verification failed.'],
+    });
+  });
+
   test('falls back to error kind with all stderr lines on unknown failure', async () => {
     const r = await runPreflightWith(
       'host',
