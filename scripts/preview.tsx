@@ -150,6 +150,108 @@ const preflightCases: Case[] = [
         />,
       ),
   },
+  {
+    view: 'preflight',
+    name: 'shim missing — prompt to install',
+    run: () =>
+      snapshot(
+        <PreflightView
+          steps={[
+            { id: 'daemon', label: 'Mac daemon', state: 'ok' },
+            {
+              id: 'remote',
+              label: 'Remote preflight (droplet)',
+              state: 'prompt',
+              prompt: {
+                kind: 'install-shim',
+                host: 'droplet',
+                onAnswer: () => {},
+              },
+            },
+            {
+              id: 'chrome',
+              label: 'Chrome (profile: work)',
+              state: 'pending',
+            },
+          ]}
+        />,
+      ),
+  },
+  {
+    view: 'preflight',
+    name: 'shim outdated — prompt to update',
+    run: () =>
+      snapshot(
+        <PreflightView
+          steps={[
+            { id: 'daemon', label: 'Mac daemon', state: 'ok' },
+            {
+              id: 'remote',
+              label: 'Remote preflight (droplet)',
+              state: 'prompt',
+              prompt: {
+                kind: 'update-shim',
+                host: 'droplet',
+                remoteHash: 'aaaa11112222',
+                expectedHash: 'bbbb33334444',
+                onAnswer: () => {},
+              },
+            },
+            {
+              id: 'chrome',
+              label: 'Chrome (profile: work)',
+              state: 'pending',
+            },
+          ]}
+        />,
+      ),
+  },
+  {
+    view: 'preflight',
+    name: 'installing shim',
+    run: () =>
+      snapshot(
+        <PreflightView
+          steps={[
+            { id: 'daemon', label: 'Mac daemon', state: 'ok' },
+            {
+              id: 'remote',
+              label: 'Remote preflight (droplet)',
+              state: 'installing',
+              installingMessage: 'Installing mole shim on droplet…',
+            },
+            {
+              id: 'chrome',
+              label: 'Chrome (profile: work)',
+              state: 'pending',
+            },
+          ]}
+        />,
+      ),
+  },
+  {
+    view: 'preflight',
+    name: 'socat missing — arch',
+    run: () =>
+      snapshot(
+        <PreflightView
+          steps={[
+            { id: 'daemon', label: 'Mac daemon', state: 'ok' },
+            {
+              id: 'remote',
+              label: 'Remote preflight (arch-box)',
+              state: 'error',
+              error: 'socat not installed. Run: sudo pacman -S socat xclip',
+            },
+            {
+              id: 'chrome',
+              label: 'Chrome (profile: work)',
+              state: 'pending',
+            },
+          ]}
+        />,
+      ),
+  },
 ];
 
 const sampleHosts: SshHost[] = [
