@@ -1,4 +1,4 @@
-import { buildNonInteractiveSshArgs } from './ssh-spawn';
+import { realSshRunner, type SshRunner } from './ssh-exec';
 
 export interface PreflightOptions {
   chromeSocket?: string;
@@ -42,11 +42,6 @@ fi
 `.trim();
 }
 
-export type SshRunner = (
-  host: string,
-  script: string,
-) => Promise<{ stdout: string; stderr: string; code: number }>;
-
 export async function runPreflightWith(
   host: string,
   runner: SshRunner,
@@ -69,26 +64,5 @@ export async function runPreflight(
   host: string,
   opts: PreflightOptions = {},
 ): Promise<PreflightResult> {
-  return runPreflightWith(
-    host,
-    async (h, script) => {
-      const proc = Bun.spawn(
-        ['ssh', ...buildNonInteractiveSshArgs(h, ['bash', '-s'])],
-        {
-          stdin: 'pipe',
-          stdout: 'pipe',
-          stderr: 'pipe',
-        },
-      );
-      proc.stdin.write(script);
-      proc.stdin.end();
-      const [stdout, stderr, code] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ]);
-      return { stdout, stderr, code };
-    },
-    opts,
-  );
+  return runPreflightWith(host, realSshRunner, opts);
 }
