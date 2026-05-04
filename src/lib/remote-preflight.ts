@@ -28,13 +28,24 @@ elif ! grep -hEi '^[[:space:]]*StreamLocalBindUnlink[[:space:]]+yes[[:space:]]*$
   exit 3
 fi
 if ! command -v socat >/dev/null 2>&1; then
-  echo "ERROR: socat not installed on remote" >&2
+  distro="unknown"
+  if [ -r /etc/os-release ]; then
+    . /etc/os-release
+    case "\${ID_LIKE:-\${ID:-}}" in
+      *debian*|*ubuntu*) distro="debian" ;;
+      *rhel*|*fedora*|*centos*) distro="rhel" ;;
+      *arch*) distro="arch" ;;
+    esac
+  fi
+  echo "MOLE_SOCAT_MISSING: $distro" >&2
   exit 1
 fi
 if [ ! -x "$HOME/.local/bin/xclip" ]; then
-  echo "ERROR: fake xclip not installed at ~/.local/bin/xclip; run remote/install.sh" >&2
+  echo "MOLE_SHIM_MISSING:" >&2
   exit 2
 fi
+remote_hash=$(sha256sum "$HOME/.local/bin/xclip" | cut -c1-12)
+echo "MOLE_SHIM_HASH: $remote_hash" >&2
 if ! pgrep -f 'socat.*mole-chrome' >/dev/null 2>&1; then
   nohup socat TCP-LISTEN:${port},bind=127.0.0.1,reuseaddr,fork UNIX-CONNECT:${sock} >/dev/null 2>&1 </dev/null &
   sleep 0.2

@@ -32,6 +32,27 @@ describe('buildPreflightScript', () => {
     const script = buildPreflightScript();
     expect(script).toContain('MOLE_WARN:');
   });
+
+  test('emits MOLE_SOCAT_MISSING with distro detected from /etc/os-release', () => {
+    const script = buildPreflightScript();
+    expect(script).toContain('MOLE_SOCAT_MISSING:');
+    expect(script).toContain('/etc/os-release');
+    expect(script).toContain('debian');
+    expect(script).toContain('rhel');
+    expect(script).toContain('arch');
+  });
+
+  test('emits MOLE_SHIM_HASH with first 12 chars of sha256 when shim present', () => {
+    const script = buildPreflightScript();
+    expect(script).toContain('MOLE_SHIM_HASH:');
+    expect(script).toContain('sha256sum');
+    expect(script).toContain('cut -c1-12');
+  });
+
+  test('emits MOLE_SHIM_MISSING when shim absent', () => {
+    const script = buildPreflightScript();
+    expect(script).toContain('MOLE_SHIM_MISSING:');
+  });
 });
 
 describe('runPreflightWith', () => {
