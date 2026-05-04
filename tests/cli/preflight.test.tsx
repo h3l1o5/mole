@@ -3,6 +3,7 @@ import { test, expect, describe } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { PreflightView } from '../../src/cli/preflight';
 import { icons, spinnerFrames } from '../../src/cli/components/theme';
+import { KEY, press } from './ink-keys';
 
 describe('PreflightView', () => {
   test('renders the four step states with the right marker', () => {
@@ -106,6 +107,175 @@ describe('PreflightView', () => {
     const out = lastFrame()!;
     // outer paddingLeft={2} + warning paddingLeft={2} + icon + 2 spaces + WARN.
     expect(out).toMatch(/^ {4}\S {2}WARN$/m);
+    unmount();
+  });
+
+  test('prompt state renders info icon and install question', () => {
+    const { lastFrame, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight (droplet)',
+            state: 'prompt',
+            prompt: {
+              kind: 'install-shim',
+              host: 'droplet',
+              onAnswer: () => {},
+            },
+          },
+        ]}
+      />,
+    );
+    const out = lastFrame()!;
+    expect(out).toContain(icons.info);
+    expect(out).toContain('Install now? [Y/n]');
+    expect(out).toContain('droplet');
+    unmount();
+  });
+
+  test('prompt update kind shows hash transition', () => {
+    const { lastFrame, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight (droplet)',
+            state: 'prompt',
+            prompt: {
+              kind: 'update-shim',
+              host: 'droplet',
+              remoteHash: 'aaaa11112222',
+              expectedHash: 'bbbb33334444',
+              onAnswer: () => {},
+            },
+          },
+        ]}
+      />,
+    );
+    const out = lastFrame()!;
+    expect(out).toContain('aaaa11112222');
+    expect(out).toContain('bbbb33334444');
+    expect(out).toContain('Update now? [Y/n]');
+    unmount();
+  });
+
+  test('installing state renders spinner with installingMessage', () => {
+    const { lastFrame, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight (droplet)',
+            state: 'installing',
+            installingMessage: 'Installing mole shim on droplet…',
+          },
+        ]}
+      />,
+    );
+    const out = lastFrame()!;
+    expect(out).toContain(spinnerFrames[0]!);
+    expect(out).toContain('Installing mole shim on droplet…');
+    unmount();
+  });
+
+  test('Y key on prompt step calls onAnswer(true)', async () => {
+    let answer: boolean | undefined;
+    const { stdin, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight (droplet)',
+            state: 'prompt',
+            prompt: {
+              kind: 'install-shim',
+              host: 'droplet',
+              onAnswer: (yes) => {
+                answer = yes;
+              },
+            },
+          },
+        ]}
+      />,
+    );
+    await press(stdin, 'y');
+    expect(answer).toBe(true);
+    unmount();
+  });
+
+  test('N key on prompt step calls onAnswer(false)', async () => {
+    let answer: boolean | undefined;
+    const { stdin, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight',
+            state: 'prompt',
+            prompt: {
+              kind: 'install-shim',
+              host: 'droplet',
+              onAnswer: (yes) => {
+                answer = yes;
+              },
+            },
+          },
+        ]}
+      />,
+    );
+    await press(stdin, 'n');
+    expect(answer).toBe(false);
+    unmount();
+  });
+
+  test('Enter on prompt step defaults to yes (capital Y in [Y/n])', async () => {
+    let answer: boolean | undefined;
+    const { stdin, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight',
+            state: 'prompt',
+            prompt: {
+              kind: 'install-shim',
+              host: 'droplet',
+              onAnswer: (yes) => {
+                answer = yes;
+              },
+            },
+          },
+        ]}
+      />,
+    );
+    await press(stdin, KEY.enter);
+    expect(answer).toBe(true);
+    unmount();
+  });
+
+  test('Esc on prompt step calls onAnswer(false)', async () => {
+    let answer: boolean | undefined;
+    const { stdin, unmount } = render(
+      <PreflightView
+        steps={[
+          {
+            id: 'remote',
+            label: 'Remote preflight',
+            state: 'prompt',
+            prompt: {
+              kind: 'install-shim',
+              host: 'droplet',
+              onAnswer: (yes) => {
+                answer = yes;
+              },
+            },
+          },
+        ]}
+      />,
+    );
+    await press(stdin, KEY.esc);
+    expect(answer).toBe(false);
     unmount();
   });
 });
