@@ -56,54 +56,119 @@ describe('buildPreflightScript', () => {
 });
 
 describe('runPreflightWith', () => {
-  test('returns ok on success', async () => {
-    const r = await runPreflightWith('host', async () => ({
-      stdout: '',
-      stderr: '',
-      code: 0,
-    }));
-    expect(r.ok).toBe(true);
+  const HASH = 'aaaabbbbcccc';
+
+  test('returns ok with empty warnings on success', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: `MOLE_SHIM_HASH: ${HASH}\n`,
+        code: 0,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'ok', warnings: [] });
   });
 
-  test('returns not ok with errors on non-zero exit', async () => {
-    const r = await runPreflightWith('host', async () => ({
-      stdout: '',
-      stderr: 'ERROR: socat not installed on remote\n',
-      code: 1,
-    }));
-    expect(r.ok).toBe(false);
-    expect(r.errors).toEqual(['ERROR: socat not installed on remote']);
+  test('extracts MOLE_WARN: lines into ok outcome warnings', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: `MOLE_WARN: cannot read sshd config\nMOLE_SHIM_HASH: ${HASH}\n`,
+        code: 0,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({
+      kind: 'ok',
+      warnings: ['cannot read sshd config'],
+    });
   });
 
-  test('extracts MOLE_WARN: stderr lines into warnings on success', async () => {
-    const r = await runPreflightWith('host', async () => ({
-      stdout: '12345\n',
-      stderr: 'MOLE_WARN: cannot read sshd config\n',
-      code: 0,
-    }));
-    expect(r.ok).toBe(true);
-    expect(r.warnings).toEqual(['cannot read sshd config']);
-    expect(r.errors).toEqual([]);
+  test('classifies socat-missing with debian distro', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'MOLE_SOCAT_MISSING: debian\n',
+        code: 1,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'socat-missing', distro: 'debian' });
   });
 
-  test('captures multiple MOLE_WARN: lines', async () => {
-    const r = await runPreflightWith('host', async () => ({
-      stdout: '1\n',
-      stderr: 'MOLE_WARN: first warning\nMOLE_WARN: second warning\n',
-      code: 0,
-    }));
-    expect(r.warnings).toEqual(['first warning', 'second warning']);
+  test('classifies socat-missing with unknown distro fallback', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'MOLE_SOCAT_MISSING: weirdos\n',
+        code: 1,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'socat-missing', distro: 'unknown' });
   });
 
-  test('separates warnings from errors when preflight fails', async () => {
-    const r = await runPreflightWith('host', async () => ({
-      stdout: '',
-      stderr:
-        'MOLE_WARN: partial config readable\nERROR: sshd missing StreamLocalBindUnlink yes\n',
-      code: 3,
-    }));
-    expect(r.ok).toBe(false);
-    expect(r.warnings).toEqual(['partial config readable']);
-    expect(r.errors).toEqual(['ERROR: sshd missing StreamLocalBindUnlink yes']);
+  test('classifies shim-missing', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'MOLE_SHIM_MISSING:\n',
+        code: 2,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'shim-missing' });
+  });
+
+  test('classifies shim-outdated when remote hash differs from expected', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'MOLE_SHIM_HASH: deadbeefdead\n',
+        code: 0,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({
+      kind: 'shim-outdated',
+      remoteHash: 'deadbeefdead',
+    });
+  });
+
+  test('classifies sshd-config-missing on exit 3', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr:
+          "ERROR: remote sshd missing 'StreamLocalBindUnlink yes'; ...\n",
+        code: 3,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({ kind: 'sshd-config-missing' });
+  });
+
+  test('falls back to error kind with all stderr lines on unknown failure', async () => {
+    const r = await runPreflightWith(
+      'host',
+      async () => ({
+        stdout: '',
+        stderr: 'something exploded\nmore detail\n',
+        code: 99,
+      }),
+      { expectedShimHash: HASH },
+    );
+    expect(r).toEqual({
+      kind: 'error',
+      errors: ['something exploded', 'more detail'],
+    });
   });
 });

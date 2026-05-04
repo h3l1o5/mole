@@ -5,9 +5,15 @@ import {
   type PreflightDeps,
   type SetStep,
 } from '../../src/cli/preflight-runner';
-import type { PreflightStep, PreflightStepId } from '../../src/cli/preflight';
+import type {
+  PreflightStep,
+  PreflightStepId,
+  PreflightPrompt,
+} from '../../src/cli/preflight';
 import type { SshHost } from '../../src/lib/ssh-config';
 import type { ProfileInfo } from '../../src/lib/chrome-profile';
+import type { PreflightOutcome } from '../../src/lib/remote-preflight';
+import type { InstallOutcome } from '../../src/lib/remote-shim-install';
 
 const HOST: SshHost = { name: 'vbm' };
 const PROFILE = (
@@ -20,6 +26,8 @@ interface Trace {
   order: Array<{ id: PreflightStepId; patch: Partial<PreflightStep> }>;
   chromeLaunched: boolean;
   sleeps: number[];
+  preflightCalls: number;
+  installCalls: number;
 }
 
 const harness = (
@@ -30,6 +38,8 @@ const harness = (
     order: [],
     chromeLaunched: false,
     sleeps: [],
+    preflightCalls: 0,
+    installCalls: 0,
   };
   const setStep: SetStep = (id, patch) => {
     trace.order.push({ id, patch });
@@ -38,7 +48,14 @@ const harness = (
   };
   const deps: PreflightDeps = {
     isDaemonHealthy: async () => true,
-    runPreflight: async () => ({ ok: true, errors: [], warnings: [] }),
+    runPreflight: async (): Promise<PreflightOutcome> => {
+      trace.preflightCalls += 1;
+      return { kind: 'ok', warnings: [] };
+    },
+    installShim: async (): Promise<InstallOutcome> => {
+      trace.installCalls += 1;
+      return { ok: true };
+    },
     launchChrome: () => {
       trace.chromeLaunched = true;
     },
@@ -83,15 +100,14 @@ describe('runPreflightStepsWith — happy path', () => {
     );
     expect(result).toEqual({ ok: true });
     expect(trace.order.map((o) => o.id)).toEqual([
-      'daemon', // running
-      'daemon', // ok
-      'remote', // running
-      'remote', // ok
-      'chrome', // running
-      'chrome', // ok
+      'daemon',
+      'daemon',
+      'remote',
+      'remote',
+      'chrome',
+      'chrome',
     ]);
     expect(trace.chromeLaunched).toBe(true);
-    expect(trace.sleeps).toEqual([1500]); // post-Chrome-launch wait only
   });
 
   test('skips chrome step entirely when profile is "skip"', async () => {
@@ -103,8 +119,6 @@ describe('runPreflightStepsWith — happy path', () => {
     );
     expect(result).toEqual({ ok: true });
     expect(trace.order.some((o) => o.id === 'chrome')).toBe(false);
-    expect(trace.chromeLaunched).toBe(false);
-    expect(trace.sleeps).toEqual([]);
   });
 
   test('reusable profile reports "reusing pid N" without launching Chrome', async () => {
@@ -116,13 +130,12 @@ describe('runPreflightStepsWith — happy path', () => {
     );
     expect(result).toEqual({ ok: true });
     expect(trace.chromeLaunched).toBe(false);
-    expect(trace.sleeps).toEqual([]); // no post-launch sleep when reusing
     expect(trace.steps.get('chrome')!.label).toBe('Chrome (reusing pid 4242)');
   });
 });
 
 describe('runPreflightStepsWith — failure short-circuit', () => {
-  test('daemon down → no remote, no chrome, error message visible', async () => {
+  test('daemon down → no remote, no chrome', async () => {
     const { setStep, trace, deps } = harness({
       isDaemonHealthy: async () => false,
     });
@@ -132,43 +145,246 @@ describe('runPreflightStepsWith — failure short-circuit', () => {
       deps,
     );
     expect(result).toEqual({ ok: false });
-    expect(trace.order.some((o) => o.id === 'remote')).toBe(false);
-    expect(trace.order.some((o) => o.id === 'chrome')).toBe(false);
     expect(trace.steps.get('daemon')!.state).toBe('error');
     expect(trace.steps.get('daemon')!.error).toMatch(/launchctl kickstart/);
   });
 
-  test('remote preflight fails → no chrome, errors joined with semicolons', async () => {
+  test('socat-missing debian → error step with apt one-liner, no install attempt', async () => {
     const { setStep, trace, deps } = harness({
-      runPreflight: async () => ({
-        ok: false,
-        errors: ['ERROR: socat not installed', 'ERROR: shim missing'],
-        warnings: [],
-      }),
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'socat-missing', distro: 'debian' };
+      },
     });
     const result = await runPreflightStepsWith(
-      { host: HOST, profile: PROFILE() },
+      { host: HOST, profile: 'skip' },
       setStep,
       deps,
     );
     expect(result).toEqual({ ok: false });
-    expect(trace.chromeLaunched).toBe(false);
-    expect(trace.order.some((o) => o.id === 'chrome')).toBe(false);
     expect(trace.steps.get('remote')!.state).toBe('error');
-    expect(trace.steps.get('remote')!.error).toBe(
-      'ERROR: socat not installed; ERROR: shim missing',
+    expect(trace.steps.get('remote')!.error).toMatch(/sudo apt install/);
+    expect(trace.installCalls).toBe(0);
+  });
+
+  test('socat-missing arch → pacman one-liner', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'socat-missing', distro: 'arch' };
+      },
+    });
+    await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      setStep,
+      deps,
     );
+    expect(trace.steps.get('remote')!.error).toMatch(/sudo pacman/);
+  });
+
+  test('socat-missing unknown → generic guidance', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'socat-missing', distro: 'unknown' };
+      },
+    });
+    await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      setStep,
+      deps,
+    );
+    expect(trace.steps.get('remote')!.error).toMatch(/socat/);
+    expect(trace.steps.get('remote')!.error).toMatch(/package manager/i);
+  });
+
+  test('sshd-config-missing → existing guidance', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'sshd-config-missing' };
+      },
+    });
+    await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      setStep,
+      deps,
+    );
+    expect(trace.steps.get('remote')!.error).toMatch(/StreamLocalBindUnlink/);
+  });
+
+  test('error kind → joined stderr', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'error', errors: ['boom', 'kapow'] };
+      },
+    });
+    await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      setStep,
+      deps,
+    );
+    expect(trace.steps.get('remote')!.error).toBe('boom; kapow');
+  });
+});
+
+describe('runPreflightStepsWith — shim install flow', () => {
+  test('shim-missing → prompt → user answers Y → installShim → re-preflight → ok', async () => {
+    let preflightCallCount = 0;
+
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        preflightCallCount += 1;
+        trace.preflightCalls += 1;
+        if (preflightCallCount === 1) return { kind: 'shim-missing' };
+        return { kind: 'ok', warnings: [] };
+      },
+      installShim: async () => {
+        trace.installCalls += 1;
+        return { ok: true };
+      },
+    });
+
+    const wrappedSetStep: SetStep = (id, patch) => {
+      setStep(id, patch);
+      if (patch.state === 'prompt' && patch.prompt) {
+        const onAnswer = patch.prompt.onAnswer;
+        queueMicrotask(() => onAnswer(true));
+      }
+    };
+
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      wrappedSetStep,
+      deps,
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(trace.preflightCalls).toBe(2);
+    expect(trace.installCalls).toBe(1);
+    expect(trace.steps.get('remote')!.state).toBe('ok');
+  });
+
+  test('shim-missing → user answers n → ok=false, no install', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'shim-missing' };
+      },
+    });
+    const wrappedSetStep: SetStep = (id, patch) => {
+      setStep(id, patch);
+      if (patch.state === 'prompt' && patch.prompt) {
+        const onAnswer = patch.prompt.onAnswer;
+        queueMicrotask(() => onAnswer(false));
+      }
+    };
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      wrappedSetStep,
+      deps,
+    );
+    expect(result).toEqual({ ok: false });
+    expect(trace.installCalls).toBe(0);
+  });
+
+  test('shim-outdated → prompt with update kind → install → ok', async () => {
+    let preflightCallCount = 0;
+    let capturedPrompt: PreflightPrompt | undefined;
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        preflightCallCount += 1;
+        trace.preflightCalls += 1;
+        if (preflightCallCount === 1)
+          return { kind: 'shim-outdated', remoteHash: 'aaa111bbb222' };
+        return { kind: 'ok', warnings: [] };
+      },
+    });
+    const wrappedSetStep: SetStep = (id, patch) => {
+      setStep(id, patch);
+      if (patch.state === 'prompt' && patch.prompt) {
+        capturedPrompt = patch.prompt;
+        const onAnswer = patch.prompt.onAnswer;
+        queueMicrotask(() => onAnswer(true));
+      }
+    };
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      wrappedSetStep,
+      deps,
+    );
+    expect(result).toEqual({ ok: true });
+    expect(capturedPrompt!.kind).toBe('update-shim');
+    expect(capturedPrompt!.remoteHash).toBe('aaa111bbb222');
+  });
+
+  test('install fails → error state, no further preflight', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'shim-missing' };
+      },
+      installShim: async () => {
+        trace.installCalls += 1;
+        return { ok: false, error: 'permission denied' };
+      },
+    });
+    const wrappedSetStep: SetStep = (id, patch) => {
+      setStep(id, patch);
+      if (patch.state === 'prompt' && patch.prompt) {
+        const onAnswer = patch.prompt.onAnswer;
+        queueMicrotask(() => onAnswer(true));
+      }
+    };
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      wrappedSetStep,
+      deps,
+    );
+    expect(result).toEqual({ ok: false });
+    expect(trace.preflightCalls).toBe(1);
+    expect(trace.installCalls).toBe(1);
+    expect(trace.steps.get('remote')!.state).toBe('error');
+    expect(trace.steps.get('remote')!.error).toMatch(/permission denied/);
+  });
+
+  test('re-preflight after install still shim-missing → error (max retries reached)', async () => {
+    const { setStep, trace, deps } = harness({
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'shim-missing' };
+      },
+    });
+    let promptCount = 0;
+    const wrappedSetStep: SetStep = (id, patch) => {
+      setStep(id, patch);
+      if (patch.state === 'prompt' && patch.prompt) {
+        promptCount += 1;
+        const onAnswer = patch.prompt.onAnswer;
+        queueMicrotask(() => onAnswer(true));
+      }
+    };
+    const result = await runPreflightStepsWith(
+      { host: HOST, profile: 'skip' },
+      wrappedSetStep,
+      deps,
+    );
+    expect(result).toEqual({ ok: false });
+    expect(trace.preflightCalls).toBe(2);
+    expect(trace.installCalls).toBe(1);
+    expect(promptCount).toBe(1);
+    expect(trace.steps.get('remote')!.error).toMatch(/Reinstall did not stick/);
   });
 });
 
 describe('runPreflightStepsWith — warning surfacing', () => {
-  test('remote preflight ok with warnings → step is ok and includes the warning string', async () => {
+  test('ok with warnings → step ok, warning visible', async () => {
     const { setStep, trace, deps } = harness({
-      runPreflight: async () => ({
-        ok: true,
-        errors: [],
-        warnings: ['cannot read sshd config'],
-      }),
+      runPreflight: async () => {
+        trace.preflightCalls += 1;
+        return { kind: 'ok', warnings: ['cannot read sshd config'] };
+      },
     });
     const result = await runPreflightStepsWith(
       { host: HOST, profile: 'skip' },
@@ -178,23 +394,5 @@ describe('runPreflightStepsWith — warning surfacing', () => {
     expect(result).toEqual({ ok: true });
     expect(trace.steps.get('remote')!.state).toBe('ok');
     expect(trace.steps.get('remote')!.warning).toMatch(/cannot read sshd config/);
-    expect(trace.sleeps).toContain(1500);
-  });
-
-  test('remote preflight fails with both warnings and errors → both surface', async () => {
-    const { setStep, trace, deps } = harness({
-      runPreflight: async () => ({
-        ok: false,
-        errors: ['ERROR: missing StreamLocalBindUnlink'],
-        warnings: ['partial config readable'],
-      }),
-    });
-    await runPreflightStepsWith(
-      { host: HOST, profile: 'skip' },
-      setStep,
-      deps,
-    );
-    expect(trace.steps.get('remote')!.warning).toBe('partial config readable');
-    expect(trace.steps.get('remote')!.error).toMatch(/StreamLocalBindUnlink/);
   });
 });

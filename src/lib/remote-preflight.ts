@@ -1,17 +1,24 @@
 import { realSshRunner, type SshRunner } from './ssh-exec';
 
+export type Distro = 'debian' | 'rhel' | 'arch' | 'unknown';
+
+export type PreflightOutcome =
+  | { kind: 'ok'; warnings: string[] }
+  | { kind: 'shim-missing' }
+  | { kind: 'shim-outdated'; remoteHash: string }
+  | { kind: 'socat-missing'; distro: Distro }
+  | { kind: 'sshd-config-missing' }
+  | { kind: 'error'; errors: string[] };
+
 export interface PreflightOptions {
   chromeSocket?: string;
   chromePort?: number;
+  expectedShimHash: string;
 }
 
-export interface PreflightResult {
-  ok: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export function buildPreflightScript(opts: PreflightOptions = {}): string {
+export function buildPreflightScript(
+  opts: Pick<PreflightOptions, 'chromeSocket' | 'chromePort'> = {},
+): string {
   const sock = opts.chromeSocket ?? '/tmp/mole-chrome.sock';
   const port = opts.chromePort ?? 9222;
   return `
@@ -53,27 +60,74 @@ fi
 `.trim();
 }
 
+function parseDistro(raw: string): Distro {
+  const trimmed = raw.trim();
+  if (trimmed === 'debian' || trimmed === 'rhel' || trimmed === 'arch') {
+    return trimmed;
+  }
+  return 'unknown';
+}
+
 export async function runPreflightWith(
   host: string,
   runner: SshRunner,
-  opts: PreflightOptions = {},
-): Promise<PreflightResult> {
+  opts: PreflightOptions,
+): Promise<PreflightOutcome> {
   const script = buildPreflightScript(opts);
   const { stderr, code } = await runner(host, script);
-  const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = stderr
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
   const warnings = lines
     .filter((l) => l.startsWith('MOLE_WARN:'))
     .map((l) => l.replace(/^MOLE_WARN:\s*/, ''));
-  const errors = lines.filter((l) => !l.startsWith('MOLE_WARN:'));
-  if (code !== 0) {
-    return { ok: false, errors, warnings };
+
+  const socatLine = lines.find((l) => l.startsWith('MOLE_SOCAT_MISSING:'));
+  if (socatLine) {
+    const distro = parseDistro(
+      socatLine.replace(/^MOLE_SOCAT_MISSING:\s*/, ''),
+    );
+    return { kind: 'socat-missing', distro };
   }
-  return { ok: true, errors: [], warnings };
+
+  if (lines.some((l) => l.startsWith('MOLE_SHIM_MISSING'))) {
+    return { kind: 'shim-missing' };
+  }
+
+  const hashLine = lines.find((l) => l.startsWith('MOLE_SHIM_HASH:'));
+  if (hashLine) {
+    const remoteHash = hashLine.replace(/^MOLE_SHIM_HASH:\s*/, '');
+    if (remoteHash !== opts.expectedShimHash) {
+      return { kind: 'shim-outdated', remoteHash };
+    }
+    if (code === 0) {
+      return { kind: 'ok', warnings };
+    }
+  }
+
+  if (code === 3) {
+    return { kind: 'sshd-config-missing' };
+  }
+
+  if (code === 0) {
+    return { kind: 'ok', warnings };
+  }
+
+  const errors = lines.filter(
+    (l) =>
+      !l.startsWith('MOLE_WARN:') &&
+      !l.startsWith('MOLE_SOCAT_MISSING:') &&
+      !l.startsWith('MOLE_SHIM_MISSING') &&
+      !l.startsWith('MOLE_SHIM_HASH:'),
+  );
+  return { kind: 'error', errors };
 }
 
 export async function runPreflight(
   host: string,
-  opts: PreflightOptions = {},
-): Promise<PreflightResult> {
+  opts: PreflightOptions,
+): Promise<PreflightOutcome> {
   return runPreflightWith(host, realSshRunner, opts);
 }

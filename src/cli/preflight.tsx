@@ -3,8 +3,25 @@ import { Box, Text } from 'ink';
 import { Spinner } from './components/spinner';
 import { colors, icons } from './components/theme';
 
-export type PreflightStepState = 'pending' | 'running' | 'ok' | 'error';
+export type PreflightStepState =
+  | 'pending'
+  | 'running'
+  | 'prompt'
+  | 'installing'
+  | 'ok'
+  | 'error';
+
 export type PreflightStepId = 'daemon' | 'remote' | 'chrome';
+
+export type PreflightPromptKind = 'install-shim' | 'update-shim';
+
+export interface PreflightPrompt {
+  kind: PreflightPromptKind;
+  host: string;
+  remoteHash?: string;
+  expectedHash?: string;
+  onAnswer: (yes: boolean) => void;
+}
 
 export interface PreflightStep {
   id: PreflightStepId;
@@ -12,6 +29,8 @@ export interface PreflightStep {
   state: PreflightStepState;
   error?: string;
   warning?: string;
+  prompt?: PreflightPrompt;
+  installingMessage?: string;
 }
 
 // Marker glyphs (✓ ✘ · △) and the Braille spinner frames don't share a
