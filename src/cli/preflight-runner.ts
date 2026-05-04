@@ -49,11 +49,11 @@ export const initialPreflightSteps = (
 };
 
 const SOCAT_HINT: Record<Distro, string> = {
-  debian: 'socat not installed. Run: sudo apt install socat xclip',
-  rhel: 'socat not installed. Run: sudo dnf install socat xclip',
-  arch: 'socat not installed. Run: sudo pacman -S socat xclip',
+  debian: 'socat not installed. Run on the remote machine: sudo apt install socat xclip',
+  rhel: 'socat not installed. Run on the remote machine: sudo dnf install socat xclip',
+  arch: 'socat not installed. Run on the remote machine: sudo pacman -S socat xclip',
   unknown:
-    'socat not installed. Install via your package manager (e.g. apt / dnf / pacman) along with xclip.',
+    'socat not installed. Install on the remote machine via your package manager (e.g. apt / dnf / pacman) along with xclip.',
 };
 
 const SSHD_HINT =

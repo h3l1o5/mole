@@ -119,7 +119,7 @@ const preflightCases: Case[] = [
               label: 'Remote preflight (synomac)',
               state: 'error',
               error:
-                'socat not installed. Fix: ssh synomac sudo apt install socat',
+                'socat not installed. Run on the remote machine: sudo apt install socat xclip',
             },
             {
               id: 'chrome',
@@ -241,7 +241,7 @@ const preflightCases: Case[] = [
               id: 'remote',
               label: 'Remote preflight (arch-box)',
               state: 'error',
-              error: 'socat not installed. Run: sudo pacman -S socat xclip',
+              error: 'socat not installed. Run on the remote machine: sudo pacman -S socat xclip',
             },
             {
               id: 'chrome',
