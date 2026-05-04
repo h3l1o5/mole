@@ -58,18 +58,19 @@ Three data paths share one SSH connection:
 | Fallback | `/usr/bin/xclip`                               |
 | PATH     | `~/.local/bin` ahead of system directories     |
 
-Most distributions don't ship `socat` or `xclip` by default. Install both
-before running `remote/install.sh`:
+Most distributions don't ship `socat` by default. mole's preflight detects
+this on first connect and prints the distro-aware install one-liner — for
+example `sudo apt install socat xclip` on Debian/Ubuntu, `sudo dnf install
+socat xclip` on RHEL/Fedora, or `sudo pacman -S socat xclip` on Arch.
+mole does not auto-run these; sudo + the system package manager are
+intentionally manual.
 
-```bash
-sudo apt install socat xclip     # Debian/Ubuntu
-sudo dnf install socat xclip     # RHEL/Fedora
-sudo pacman -S socat xclip       # Arch
-```
-
-`remote/install.sh` auto-appends `export PATH="$HOME/.local/bin:$PATH"` to
-`~/.bashrc` if it's missing. Start a new SSH session (or
-`source ~/.bashrc`) after installing so the shim wins over `/usr/bin/xclip`.
+The `xclip` shim itself lives in `~/.local/bin/` and needs no sudo.
+mole's preflight installs (or updates) the shim automatically on first
+connect after asking for confirmation. The first installation also
+appends `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` when
+missing — start a new SSH session (or `source ~/.bashrc`) so the shim
+wins over `/usr/bin/xclip`.
 
 ## Install
 
@@ -92,16 +93,18 @@ The installer will:
 
 Make sure `~/.local/bin` is in your `PATH`.
 
-### On each Linux remote (once per host)
+### On each Linux remote
+
+Nothing to do up front. The first time `mole` connects to a host its
+preflight detects whether the shim is missing or outdated and prompts to
+install it inline (`Install now? [Y/n]`). If you're on an air-gapped
+host where running `mole` against it isn't an option, the legacy manual
+path still works:
 
 ```bash
 scp remote/xclip remote/install.sh <host>:/tmp/
 ssh <host> 'bash /tmp/install.sh'
 ```
-
-This installs the `xclip` shim at `~/.local/bin/xclip`. Confirm with
-`ssh <host> 'which xclip'`; it should resolve to the shim rather than
-`/usr/bin/xclip`.
 
 ### Chrome profile setup
 
