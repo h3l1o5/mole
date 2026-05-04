@@ -27,6 +27,22 @@ describe('buildInstallScript', () => {
     const s = buildInstallScript(SHIM);
     expect(s.startsWith('set -eu')).toBe(true);
   });
+
+  test('heredoc writes shim byte-for-byte (preserves single trailing newline)', () => {
+    const s = buildInstallScript(SHIM);
+    const m = s.match(/<<'MOLE_SHIM_EOF'\n([\s\S]*?)\nMOLE_SHIM_EOF\n/);
+    expect(m).not.toBeNull();
+    const written = m![1] + '\n';
+    expect(written).toBe(SHIM);
+  });
+
+  test('handles shim without trailing newline', () => {
+    const noNl = '#!/usr/bin/env bash\necho hi';
+    const s = buildInstallScript(noNl);
+    const m = s.match(/<<'MOLE_SHIM_EOF'\n([\s\S]*?)\nMOLE_SHIM_EOF\n/);
+    const written = m![1] + '\n';
+    expect(written).toBe(noNl + '\n');
+  });
 });
 
 describe('installShimWith', () => {

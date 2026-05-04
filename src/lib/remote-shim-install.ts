@@ -6,10 +6,14 @@ export type InstallOutcome =
   | { ok: false; error: string };
 
 export function buildInstallScript(shimContent: string): string {
+  // Heredoc terminates each line with \n; strip a trailing newline from
+  // shimContent so the written file matches the source byte-for-byte
+  // (otherwise sha256sum disagrees with SHIM_HASH and reinstall loops).
+  const body = shimContent.endsWith('\n') ? shimContent.slice(0, -1) : shimContent;
   return `set -eu
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/xclip" <<'${HEREDOC_TERMINATOR}'
-${shimContent}
+${body}
 ${HEREDOC_TERMINATOR}
 chmod +x "$HOME/.local/bin/xclip"
 
