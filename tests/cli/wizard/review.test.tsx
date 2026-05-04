@@ -2,8 +2,11 @@ import React from 'react';
 import { test, expect, describe } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { ReviewStep } from '../../../src/cli/wizard/review';
+import { icons, decoration } from '../../../src/cli/components/theme';
 import type { SshHost } from '../../../src/lib/ssh-config';
 import type { ProfileInfo } from '../../../src/lib/chrome-profile';
+
+const TITLE_WRAPPED = `${decoration.titleBarLeft} READY TO TUNNEL ${decoration.titleBarRight}`;
 
 const HOST: SshHost = { name: 'vbm', user: 'root', hostname: 'martyvbm.syno' };
 const PROFILE: ProfileInfo = {
@@ -71,7 +74,7 @@ describe('<ReviewStep>', () => {
     expect(frame).not.toMatch(/[╭╰╮╯]/);
   });
 
-  test('wide path renders ✓ status icons for Host and Profile', () => {
+  test('wide path renders tick status icons for Host and Profile', () => {
     const { lastFrame } = render(
       <ReviewStep
         host={HOST}
@@ -81,11 +84,11 @@ describe('<ReviewStep>', () => {
       />,
     );
     const frame = lastFrame() ?? '';
-    const tickCount = (frame.match(/✓/g) ?? []).length;
+    const tickCount = frame.split(icons.tick).length - 1;
     expect(tickCount).toBeGreaterThanOrEqual(2);
   });
 
-  test('wide path renders → status icon for Will', () => {
+  test('wide path renders arrow status icon for Will', () => {
     const { lastFrame } = render(
       <ReviewStep
         host={HOST}
@@ -94,7 +97,7 @@ describe('<ReviewStep>', () => {
         innerWidth={70}
       />,
     );
-    expect(lastFrame() ?? '').toContain('→');
+    expect(lastFrame() ?? '').toContain(icons.arrowRight);
   });
 
   test('wide path title is all caps READY TO TUNNEL with decorative bars', () => {
@@ -106,7 +109,7 @@ describe('<ReviewStep>', () => {
         innerWidth={70}
       />,
     );
-    expect(lastFrame() ?? '').toContain('▌ READY TO TUNNEL ▐');
+    expect(lastFrame() ?? '').toContain(TITLE_WRAPPED);
   });
 
   test('narrow path uses short status keyword, no em-dash phrase', () => {
@@ -160,9 +163,9 @@ describe('<ReviewStep>', () => {
       />,
     );
     const frame = lastFrame() ?? '';
-    expect(frame).toContain('✓ Host');
-    expect(frame).toContain('✓ Profile');
-    expect(frame).toContain('→ Will');
+    expect(frame).toContain(`${icons.tick} Host`);
+    expect(frame).toContain(`${icons.tick} Profile`);
+    expect(frame).toContain(`${icons.arrowRight} Will`);
   });
 
   test('narrow path title also uses all caps with decorative bars', () => {
@@ -174,7 +177,7 @@ describe('<ReviewStep>', () => {
         innerWidth={48}
       />,
     );
-    expect(lastFrame() ?? '').toContain('▌ READY TO TUNNEL ▐');
+    expect(lastFrame() ?? '').toContain(TITLE_WRAPPED);
   });
 
   test('narrow path CTA is inline (no border chars) but still all caps', () => {
@@ -197,8 +200,7 @@ describe('<ReviewStep>', () => {
     );
     const frame = lastFrame() ?? '';
     expect(frame).not.toContain('press ENTER');
-    expect(frame).not.toContain('▌');
-    expect(frame).not.toContain('▐');
+    expect(frame).not.toContain(TITLE_WRAPPED);
   });
 
   test('submitted title is plain READY TO TUNNEL with no decorative bars (wide and narrow)', () => {
@@ -213,8 +215,7 @@ describe('<ReviewStep>', () => {
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('READY TO TUNNEL');
-      expect(frame).not.toContain('▌');
-      expect(frame).not.toContain('▐');
+      expect(frame).not.toContain(TITLE_WRAPPED);
       unmount();
     }
   });

@@ -33,10 +33,8 @@ export interface PreflightStep {
   installingMessage?: string;
 }
 
-// Marker glyphs (✓ ✘ · △) and the Braille spinner frames don't share a
-// uniform cell width across terminal fonts. Wrap each in a fixed 2-cell
-// Box so the label/message column starts at the same offset regardless
-// of which glyph is painted.
+// Wrap every marker in a fixed 2-cell Box so the label/message column
+// starts at the same offset regardless of which glyph is painted.
 const MarkerCell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box width={2}>{children}</Box>
 );
@@ -59,7 +57,7 @@ const Marker: React.FC<{ state: PreflightStepState }> = ({ state }) => {
       break;
     case 'pending':
     default:
-      inner = <Text dimColor>·</Text>;
+      inner = <Text dimColor>{icons.bullet}</Text>;
       break;
   }
   return <MarkerCell>{inner}</MarkerCell>;

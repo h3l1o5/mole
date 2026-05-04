@@ -1,11 +1,14 @@
 import { test, expect, describe } from 'bun:test';
-import figures from 'figures';
+import stringWidth from 'string-width';
 import {
   colors,
   icons,
   spinnerFrames,
   colorPhase,
+  decoration,
 } from '../../../src/cli/components/theme';
+
+const ASCII_PRINTABLE = /^[\x20-\x7E]+$/;
 
 describe('theme', () => {
   test('colors exposes the five semantic slots used by the design language', () => {
@@ -16,23 +19,44 @@ describe('theme', () => {
     expect(colors.info).toBeDefined();
   });
 
-  test('icons mostly pass through figures, except width-glitch overrides', () => {
-    // Pass-throughs.
-    expect(icons.cross).toBe(figures.cross);
-    expect(icons.pointer).toBe(figures.pointer);
-    expect(icons.pointerSmall).toBe(figures.pointerSmall);
-    expect(icons.ellipsis).toBe(figures.ellipsis);
-    // figures.tick / figures.warning / figures.info measure as width=2
-    // in string-width but render as 1 column; we override with width=1
-    // alternates so <Box width={2}> padding stays uniform across markers.
-    expect(icons.tick).toBe('✓');
-    expect(icons.warning).toBe('△');
-    expect(icons.info).toBe('i');
+  test('every icon is printable ASCII so it renders consistently across fonts', () => {
+    for (const value of Object.values(icons)) {
+      expect(value).toMatch(ASCII_PRINTABLE);
+    }
+  });
+
+  test('single-glyph icons measure width 1', () => {
+    const singles = [
+      icons.tick,
+      icons.cross,
+      icons.info,
+      icons.warning,
+      icons.pointer,
+      icons.pointerSmall,
+      icons.bullet,
+    ];
+    for (const glyph of singles) {
+      expect(stringWidth(glyph)).toBe(1);
+    }
   });
 
   test('spinnerFrames is a non-empty animation sequence', () => {
     expect(Array.isArray(spinnerFrames)).toBe(true);
-    expect(spinnerFrames.length).toBeGreaterThan(4);
+    expect(spinnerFrames.length).toBeGreaterThan(2);
+  });
+
+  test('every spinner frame is printable ASCII so it renders width 1 across fonts', () => {
+    for (const frame of spinnerFrames) {
+      expect(frame).toMatch(ASCII_PRINTABLE);
+      expect(stringWidth(frame)).toBe(1);
+    }
+  });
+
+  test('every decoration glyph is printable ASCII width 1', () => {
+    for (const value of Object.values(decoration)) {
+      expect(value).toMatch(ASCII_PRINTABLE);
+      expect(stringWidth(value)).toBe(1);
+    }
   });
 
   test('colorPhase exposes a primary keyframe pair as 6-digit hex strings', () => {

@@ -11,7 +11,7 @@
 **Spec:** `docs/2026-05-04-auto-bootstrap-shim-design.md`
 
 **Constraints from CLAUDE.md:**
-- No component library；hand-rolled Ink + figures
+- No component library；hand-rolled Ink，glyphs 全 ASCII（不再用 `figures`）
 - 所有顏色/icon/spinner 來自 `src/cli/components/theme.ts`
 - Validation errors prefixed `colors.error` + `icons.warning`
 - 依靠顏色 + icon 強調，不用 bold

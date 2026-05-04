@@ -1,5 +1,3 @@
-import figures from 'figures';
-
 export const colors = {
   primary: 'cyan',
   success: 'green',
@@ -8,42 +6,30 @@ export const colors = {
   info: 'blue',
 } as const;
 
-// figures.tick (✔ U+2714), figures.warning (⚠ U+26A0), and figures.info
-// (ⓘ U+24D8) measure as width=2 in string-width but render as 1 column in
-// real terminals. Box width={2} then skips padding, breaking marker→label
-// alignment. Use the light/ASCII variants which measure consistently as
-// width=1.
+// All glyphs are printable ASCII. Unicode alternates (✓, ⠋, △, ❯, etc.)
+// render at inconsistent vertical positions and widths across terminal
+// fonts, breaking marker→label alignment. ASCII characters all sit on the
+// baseline at width 1, so the layout stays stable everywhere.
 export const icons = {
-  tick: '✓',
-  cross: figures.cross,
+  tick: 'v',
+  cross: 'x',
   info: 'i',
-  warning: '△',
-  pointer: figures.pointer,
-  pointerSmall: figures.pointerSmall,
-  ellipsis: figures.ellipsis,
-  bullet: figures.bullet,
-  arrowRight: '→',
+  warning: '!',
+  pointer: '>',
+  pointerSmall: '>',
+  ellipsis: '...',
+  bullet: '*',
+  arrowRight: '->',
 } as const;
 
 // Decorative bars flanking the review title. Kept here so future glyph
 // swaps don't require greping every consumer.
 export const decoration = {
-  titleBarLeft: '▌',
-  titleBarRight: '▐',
+  titleBarLeft: '|',
+  titleBarRight: '|',
 } as const;
 
-export const spinnerFrames = [
-  '⠋',
-  '⠙',
-  '⠹',
-  '⠸',
-  '⠼',
-  '⠴',
-  '⠦',
-  '⠧',
-  '⠇',
-  '⠏',
-];
+export const spinnerFrames = ['|', '/', '-', '\\'];
 
 export const colorPhase = {
   primary: { base: '#5fffff', peak: '#5fff87' },

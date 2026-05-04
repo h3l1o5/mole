@@ -21,6 +21,7 @@ describe('PreflightView', () => {
     expect(out).toContain('Chrome');
     expect(out).toContain(spinnerFrames[0]!);
     expect(out).toContain('Daemon');
+    expect(out).toContain(icons.bullet);
     expect(out).toContain('Remote preflight');
     unmount();
   });
@@ -78,11 +79,9 @@ describe('PreflightView', () => {
     unmount();
   });
 
-  // Layout regression guard. We render two trailing spaces after every
-  // marker, not one: some terminal fonts paint the marker glyph (e.g.
-  // ✓ U+2713) wide enough to swallow a single trailing space, leaving
-  // marker and label visually touching. Two spaces survives that and
-  // keeps alignment uniform across pending / running / ok / error.
+  // Layout regression guard. Two trailing spaces after every marker keep
+  // the marker→label gap visually uniform across pending / running / ok /
+  // error and absorb minor font-side spacing variance.
   test('every marker leaves exactly two spaces before the label', () => {
     const states = ['pending', 'running', 'ok', 'error'] as const;
     for (const state of states) {

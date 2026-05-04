@@ -31,13 +31,13 @@ bun run daemon:status        # PID / state
 
 ## UI/UX rules
 
-**No component library.** No `@inkjs/ui` or wrappers. Hand-roll on Ink plus `figures` for cross-platform glyphs.
+**No component library.** No `@inkjs/ui` or wrappers. Hand-roll on Ink. All glyphs are printable ASCII so they sit on the baseline at width 1 across every terminal font — no Unicode, no `figures` package.
 
 **Pull everything visual from `src/cli/components/theme.ts`:**
 
 - Palette: `primary` (cyan), `success` (green), `error` (red), `warning` (yellow), `info` (blue)
-- Icons: `tick`, `cross`, `info`, `warning`, `pointer`, `pointerSmall`, `ellipsis`, `bullet`
-- Spinner: Braille frames at 80 ms
+- Icons: `tick`, `cross`, `info`, `warning`, `pointer`, `pointerSmall`, `ellipsis`, `bullet`, `arrowRight`
+- Spinner: ASCII frames `|/-\` at 80 ms
 
 Never hard-code color strings, glyphs, or spinner frames.
 
