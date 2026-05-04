@@ -2,12 +2,9 @@
 
 > A zero-configuration bridge that makes a remote Linux shell feel local.
 
-[繁體中文](./README.zh-TW.md)
-
-`mole` is a single-binary CLI that tunnels your Mac's clipboard and Chrome
-DevTools port into a Linux SSH session. Paste screenshots, drive a browser,
-and run Claude Code on a remote host as if it were local — all through one
-SSH connection.
+`mole` is a single-binary macOS CLI that tunnels your Mac clipboard and Chrome
+DevTools port into a Linux SSH session over one connection. Paste screenshots,
+drive a remote browser, and run Claude Code on the remote as if it were local.
 
 ## Features
 
@@ -40,8 +37,6 @@ Three data paths share one SSH connection:
 | Clipboard    | remote `xclip` → unix socket → SSH tunnel → `mole-daemon` → `mole-pasteboard` | read Mac clipboard |
 | Chrome CDP   | remote `localhost:9222` → `socat` → SSH tunnel → Mac `:9222` → Chrome  | control Mac Chrome |
 | Shell        | keyboard ↔ `ssh` (stdio inherit) ↔ remote shell            | normal SSH session |
-
-Full design: [`docs/2026-04-24-mole-design.md`](docs/2026-04-24-mole-design.md).
 
 ## Requirements
 
@@ -132,16 +127,12 @@ mole
 4. You are dropped into the remote shell. `Ctrl+V` in Claude Code pastes
    your Mac clipboard. `http://localhost:9222` on the remote is your Mac
    Chrome.
-5. When you are done, type `exit`. You drop straight back to your Mac
-   shell. The remote socat bridge stays running idle and is reused by
-   the next `mole` connection.
+5. `exit` drops you straight back to your Mac shell. The remote socat
+   bridge stays running idle and is reused on the next connection.
 
-## Switching between Macs
-
-Run `mole` on whichever Mac you want to be active. The reverse tunnel
-migrates automatically — the other Mac's clipboard and Chrome paths go
-dark until you run `mole` on it again. The other SSH session (and any
-tmux or Claude Code inside it) keeps running.
+To switch active Macs, run `mole` on the other one. The reverse tunnel
+migrates automatically; the previous SSH session (and any tmux or Claude
+Code inside it) keeps running, just without clipboard and Chrome paths.
 
 ## Troubleshooting
 
@@ -187,68 +178,30 @@ Quit that Chrome window, or pick a different profile.
 
 ## Development
 
-`mole` follows the standard "long-running daemon + thin client" pattern
-(like `dockerd`/`docker` or `tmux` server/client). Day-to-day development
-runs each part directly from source — no build, no install.
-
-### Day-to-day workflow
-
-The CLI is what you'll iterate on most. The daemon installed by
-`./scripts/install.sh` keeps running in the background, so you don't need
-to touch it:
-
 ```bash
-bun run dev:cli      # runs src/cli/index.tsx directly via Bun
+bun install
+bun run dev:cli       # iterate on the CLI; the launchd daemon keeps running
+bun run dev:daemon    # iterate on the daemon (run `bun run daemon:stop` first)
+bun run preview       # snapshot every TUI screen as plain text
+bun test
+bun run typecheck
 ```
-
-Edit, save, Ctrl-C, re-run. Bun executes TypeScript/TSX natively, so
-there's no compile step.
-
-### When you also need to iterate on the daemon
-
-The dev daemon and the launchd-managed prod daemon both want
-`/tmp/mole-clip.sock`. Stop prod first, run dev foreground, restore prod
-when you're done:
-
-```bash
-bun run daemon:stop      # bootout the launchd service
-bun run dev:daemon       # foreground; logs to stdout, Ctrl-C kills it
-# … iterate …
-bun run daemon:start     # bootstrap the launchd service back
-bun run daemon:status    # confirm it's running
-```
-
-### When to run a real install
 
 `bun run dev:*` runs source directly. `./scripts/install.sh` produces a
-single-file binary via `bun build --compile`. They are not equivalent:
+`bun build --compile` single-file binary; the two paths diverge on
+`import.meta.dir`, `process.execPath`, and launchd's stripped environment.
+Run a real install once before shipping.
 
-- Compiled binaries can hit subtly different paths (`import.meta.dir`,
-  `process.execPath`) than source runs.
-- The launchd-managed daemon runs with a stripped environment — no shell
-  PATH, no exported vars, different working directory.
-
-Healthy rhythm: `dev:*` for iteration, `./scripts/install.sh` once before
-committing or shipping to verify the production path still works.
-
-### Power-user: dev/prod isolation
-
-The daemon and the remote `xclip` shim both honour `MOLE_SOCKET`. If you
-need a dev daemon to coexist with the prod one (rare), set the env var on
-both ends:
+To run a dev daemon alongside the prod one, set `MOLE_SOCKET` on both the
+daemon and the remote shell (the `xclip` shim honours it):
 
 ```bash
 MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:daemon
 MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:cli
-# remote shell also needs MOLE_SOCKET set for the xclip shim to match
 ```
 
-### Tests and typecheck
-
-```bash
-bun test
-bun run typecheck
-```
+See [`CLAUDE.md`](CLAUDE.md) for UI conventions, theme rules, and the
+preview-after-every-UI-change discipline.
 
 ## Uninstall
 
@@ -258,7 +211,3 @@ bun run typecheck
 
 Binaries, the launchd agent, and the daemon socket are removed. Logs in
 `~/.local/state/mole/` are preserved.
-
-## License
-
-Private (for now).
