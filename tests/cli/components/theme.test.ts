@@ -19,15 +19,15 @@ describe('theme', () => {
   test('icons mostly pass through figures, except width-glitch overrides', () => {
     // Pass-throughs.
     expect(icons.cross).toBe(figures.cross);
-    expect(icons.info).toBe(figures.info);
     expect(icons.pointer).toBe(figures.pointer);
     expect(icons.pointerSmall).toBe(figures.pointerSmall);
     expect(icons.ellipsis).toBe(figures.ellipsis);
-    // figures.tick / figures.warning measure as width=2 in string-width
-    // but render as 1 column; we override with width=1 alternates so
-    // <Box gap={1}> spacing stays uniform across markers.
+    // figures.tick / figures.warning / figures.info measure as width=2
+    // in string-width but render as 1 column; we override with width=1
+    // alternates so <Box width={2}> padding stays uniform across markers.
     expect(icons.tick).toBe('✓');
     expect(icons.warning).toBe('△');
+    expect(icons.info).toBe('i');
   });
 
   test('spinnerFrames is a non-empty animation sequence', () => {
