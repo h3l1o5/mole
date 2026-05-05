@@ -6,6 +6,7 @@ export interface UninstallDeps {
     path: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   sleep: (ms: number) => Promise<void>;
+  listActiveSessions: () => Promise<number[]>;
 }
 
 export interface UninstallReport {
@@ -13,6 +14,7 @@ export interface UninstallReport {
   daemonKilled: boolean;
   removed: string[];
   failed: { path: string; error: string }[];
+  activeSessions: number[];
 }
 
 const POLL_ATTEMPTS = 10;
@@ -22,6 +24,10 @@ export async function performUninstall(
   deps: UninstallDeps,
   paths: string[],
 ): Promise<UninstallReport> {
+  // Sample CLI sessions before bootout so the report can warn the user that
+  // their ssh tunnels are still alive after the daemon goes away.
+  const activeSessions = await deps.listActiveSessions();
+
   await deps.bootout();
 
   let stopped = false;
@@ -52,5 +58,6 @@ export async function performUninstall(
     daemonKilled,
     removed,
     failed,
+    activeSessions,
   };
 }

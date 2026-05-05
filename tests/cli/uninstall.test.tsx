@@ -12,6 +12,7 @@ const idleDeps: UninstallDeps = {
   killDaemon: async () => {},
   remove: async () => ({ ok: true }),
   sleep: async () => {},
+  listActiveSessions: async () => [],
 };
 
 describe('UninstallApp', () => {
@@ -84,6 +85,24 @@ describe('UninstallApp', () => {
     await settle(80);
     expect(exitCode).toBe(0);
     expect(inst.lastFrame() ?? '').toContain('Removed: 1');
+    inst.unmount();
+  });
+
+  test('active mole sessions surface a warning with PIDs', async () => {
+    const inst = render(
+      <UninstallApp
+        deps={{ ...idleDeps, listActiveSessions: async () => [4242, 4243] }}
+        paths={['/a']}
+        yes={true}
+        onExit={() => {}}
+      />,
+    );
+    await settle(80);
+    const out = inst.lastFrame() ?? '';
+    expect(out).toContain('active mole CLI');
+    expect(out).toContain('4242');
+    expect(out).toContain('4243');
+    expect(out).toContain('ssh tunnels will keep running');
     inst.unmount();
   });
 

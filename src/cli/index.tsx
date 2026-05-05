@@ -120,12 +120,33 @@ async function realRemove(
   }
 }
 
+async function realListActiveSessions(): Promise<number[]> {
+  // `mole` CLI sessions own their own ssh children. They don't die with the
+  // daemon, so warn the user that bootout will leave their tunnels alive.
+  // pgrep -x matches argv[0] basename exactly, so it picks up `mole` without
+  // also matching `mole-daemon` or `mole-pasteboard`.
+  const uid = String(process.getuid?.() ?? 0);
+  const proc = Bun.spawn(['pgrep', '-x', '-u', uid, 'mole'], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+  });
+  const [out] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const self = process.pid;
+  return out
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => Number.parseInt(s, 10))
+    .filter((n) => Number.isFinite(n) && n !== self);
+}
+
 const realDeps: UninstallDeps = {
   bootout: realBootout,
   socketGone,
   killDaemon,
   remove: realRemove,
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  listActiveSessions: realListActiveSessions,
 };
 
 async function runUninstall(yes: boolean): Promise<number> {

@@ -641,6 +641,7 @@ const stubDeps = {
   killDaemon: async () => {},
   remove: async () => ({ ok: true }),
   sleep: async () => {},
+  listActiveSessions: async () => [],
 } as const;
 
 const uninstallCases: Case[] = [
@@ -695,6 +696,25 @@ const uninstallCases: Case[] = [
             '/Users/me/.local/bin/mole',
             '/Users/me/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist',
           ]}
+          yes={true}
+          onExit={() => {}}
+        />,
+        async () => {
+          await new Promise((r) => setTimeout(r, 80));
+        },
+      ),
+  },
+  {
+    view: 'uninstall',
+    name: 'summary with active sessions',
+    run: () =>
+      snapshot(
+        <UninstallApp
+          deps={{
+            ...stubDeps,
+            listActiveSessions: async () => [4242, 4243],
+          }}
+          paths={['/Users/me/.local/bin/mole', '/Users/me/.local/bin/mole-daemon']}
           yes={true}
           onExit={() => {}}
         />,

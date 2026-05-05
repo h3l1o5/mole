@@ -20,6 +20,7 @@ function makeDeps(overrides: Partial<UninstallDeps> = {}): UninstallDeps {
     killDaemon: async () => {},
     remove: async () => ({ ok: true }),
     sleep: noopSleep,
+    listActiveSessions: async () => [],
     ...overrides,
   };
 }
@@ -79,6 +80,30 @@ describe('performUninstall', () => {
     );
     expect(report.removed).toEqual(['/a', '/c']);
     expect(report.failed).toEqual([{ path: '/b', error: 'EACCES' }]);
+  });
+
+  test('reports active mole CLI sessions sampled before bootout', async () => {
+    const order: string[] = [];
+    const report = await performUninstall(
+      makeDeps({
+        listActiveSessions: async () => {
+          order.push('list');
+          return [1234, 5678];
+        },
+        bootout: async () => {
+          order.push('bootout');
+          return { code: 0, stderr: '' };
+        },
+      }),
+      ['/a'],
+    );
+    expect(report.activeSessions).toEqual([1234, 5678]);
+    expect(order).toEqual(['list', 'bootout']);
+  });
+
+  test('no active sessions → empty list, no daemonKilled false-positive', async () => {
+    const report = await performUninstall(makeDeps(), ['/a']);
+    expect(report.activeSessions).toEqual([]);
   });
 
   test('socket eventually goes after a few polls → no kill', async () => {

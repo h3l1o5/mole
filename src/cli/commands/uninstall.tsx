@@ -91,5 +91,16 @@ const Summary: React.FC<{ report: UninstallReport }> = ({ report }) => (
         {icons.warning} Daemon did not exit cleanly; SIGKILL'd.
       </Text>
     )}
+    {report.activeSessions.length > 0 && (
+      <>
+        <Text color={colors.warning}>
+          {icons.warning} {report.activeSessions.length} active mole CLI
+          session(s) detected (PIDs: {report.activeSessions.join(', ')}).
+        </Text>
+        <Text color={colors.warning}>
+          {'  '}Their ssh tunnels will keep running until you exit them.
+        </Text>
+      </>
+    )}
   </Box>
 );
