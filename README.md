@@ -101,15 +101,6 @@ scp remote/xclip remote/install.sh <host>:/tmp/
 ssh <host> 'bash /tmp/install.sh'
 ```
 
-### Chrome profile setup
-
-```bash
-mkdir -p ~/.chrome-profiles/work ~/.chrome-profiles/personal
-```
-
-The first time `mole` launches Chrome with a given profile you will need
-to sign in to your sites again. Profile state is preserved thereafter.
-
 ## Usage
 
 ```bash
