@@ -45,8 +45,6 @@ Three data paths share one SSH connection:
 | Item                 | Minimum                                       |
 | -------------------- | --------------------------------------------- |
 | macOS                | 13 (Ventura)                                  |
-| Bun                  | 1.1 (build only)                              |
-| Xcode CLT (`swiftc`) | `xcode-select --install` (build only)         |
 | Google Chrome        | any recent version                            |
 
 ### Linux (remote)
@@ -77,21 +75,18 @@ wins over `/usr/bin/xclip`.
 ### On your Mac
 
 ```bash
-git clone git@github.com:h3l1o5/mole.git ~/src/github.com/h3l1o5/mole
-cd ~/src/github.com/h3l1o5/mole
-bun install
-bun run build
-./scripts/install.sh
+curl -fsSL https://raw.githubusercontent.com/h3l1o5/mole/main/install.sh | bash
 ```
 
 The installer will:
 
-1. Verify that `swiftc`, `open`, and `launchctl` are available.
-2. Copy `mole`, `mole-daemon`, and `mole-pasteboard` to `~/.local/bin/`.
-3. Install and load the launchd agent (`com.h3l1o5.mole-daemon`).
-4. Ping the daemon to confirm it is serving on `/tmp/mole-clip.sock`.
+1. Detect your CPU architecture (`arm64` or `x86_64`).
+2. Download the matching tarball from the latest GitHub Release.
+3. Drop `mole`, `mole-daemon`, and `mole-pasteboard` into `~/.local/bin/`.
+4. Install and load the launchd agent (`com.h3l1o5.mole-daemon`).
+5. Ping the daemon to confirm it is serving on `/tmp/mole-clip.sock`.
 
-Make sure `~/.local/bin` is in your `PATH`.
+Re-run the same one-liner to upgrade. Make sure `~/.local/bin` is in your `PATH`.
 
 ### On each Linux remote
 
@@ -190,6 +185,15 @@ bun test
 bun run typecheck
 ```
 
+For a full local install from source (the same flow CI runs):
+
+```bash
+bun run build
+./scripts/install.sh
+```
+
+This requires `bun` and Xcode Command Line Tools (`swiftc`).
+
 `bun run dev:*` runs source directly. `./scripts/install.sh` produces a
 `bun build --compile` single-file binary; the two paths diverge on
 `import.meta.dir`, `process.execPath`, and launchd's stripped environment.
@@ -209,8 +213,9 @@ preview-after-every-UI-change discipline.
 ## Uninstall
 
 ```bash
-./scripts/uninstall.sh
+mole uninstall
 ```
 
-Binaries, the launchd agent, and the daemon socket are removed. Logs in
-`~/.local/state/mole/` are preserved.
+The command lists every file it will touch, asks for confirmation, then
+removes binaries, the launchd agent, the daemon socket, and the log
+directory. Use `mole uninstall --yes` to skip the prompt.
