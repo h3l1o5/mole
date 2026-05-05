@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import React, { useState, useEffect, useRef } from 'react';
 import { render } from 'ink';
+import { rm, unlink, stat } from 'fs/promises';
 import { Wizard, type WizardState, type WizardSubmitPayload } from './wizard';
 import { PreflightView, type PreflightStep } from './preflight';
 import { spawnSsh } from '../lib/ssh-session';
@@ -13,6 +14,9 @@ import {
 } from './preflight-runner';
 import pkg from '../../package.json' with { type: 'json' };
 import { parseArgs } from './parse-args';
+import { UninstallApp } from './commands/uninstall';
+import { type UninstallDeps } from '../lib/uninstall';
+import { PATHS, pathsToRemove } from '../lib/install-paths';
 
 interface AppProps {
   onDone: (
@@ -67,6 +71,79 @@ const App: React.FC<AppProps> = ({ onDone }) => {
   );
 };
 
+async function realBootout(): Promise<{ code: number; stderr: string }> {
+  const proc = Bun.spawn(
+    ['launchctl', 'bootout', `gui/${process.getuid?.() ?? 0}/${PATHS.daemonLabel}`],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
+  const [stderr, code] = await Promise.all([
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  return { code, stderr };
+}
+
+async function socketGone(): Promise<boolean> {
+  try {
+    await stat(PATHS.socket);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+async function killDaemon(): Promise<void> {
+  Bun.spawnSync(['pkill', '-9', '-f', 'mole-daemon'], {
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+}
+
+async function realRemove(
+  path: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    let s;
+    try {
+      s = await stat(path);
+    } catch {
+      return { ok: true };
+    }
+    if (s.isDirectory()) {
+      await rm(path, { recursive: true, force: true });
+    } else {
+      await unlink(path);
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+const realDeps: UninstallDeps = {
+  bootout: realBootout,
+  socketGone,
+  killDaemon,
+  remove: realRemove,
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+};
+
+async function runUninstall(yes: boolean): Promise<number> {
+  return new Promise<number>((resolve) => {
+    const app = render(
+      <UninstallApp
+        deps={realDeps}
+        paths={pathsToRemove()}
+        yes={yes}
+        onExit={(code) => {
+          app.unmount();
+          resolve(code);
+        }}
+      />,
+    );
+  });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -75,7 +152,10 @@ async function main() {
     return;
   }
 
-  // TODO Task 6: handle args.kind === 'uninstall'
+  if (args.kind === 'uninstall') {
+    const code = await runUninstall(args.yes);
+    process.exit(code);
+  }
 
   const result = await new Promise<{
     submission: WizardSubmitPayload | null;
