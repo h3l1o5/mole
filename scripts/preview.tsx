@@ -411,6 +411,22 @@ const profilePickerCases: Case[] = [
         />,
       ),
   },
+  {
+    view: 'profile-picker',
+    name: 'has profiles — keeps original subhead',
+    run: () =>
+      snapshot(
+        <ProfilePicker
+          profiles={[
+            { name: 'work', path: '/p/work', status: 'free' },
+            { name: 'home', path: '/p/home', status: 'free' },
+          ]}
+          ui={{ index: 0, input: '', cursor: 0 }}
+          onUiChange={noopUi}
+          onPick={() => {}}
+        />,
+      ),
+  },
 ];
 
 const wizardCases: Case[] = [
