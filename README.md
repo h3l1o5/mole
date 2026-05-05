@@ -87,6 +87,31 @@ scp remote/xclip remote/install.sh <host>:/tmp/
 ssh <host> 'bash /tmp/install.sh'
 ```
 
+## Uninstall
+
+### On your Mac
+
+```bash
+mole uninstall            # lists files, asks to confirm
+mole uninstall --yes      # skip the prompt
+```
+
+Stops the launchd agent and removes the binaries, plist, socket, and log
+directory. If the `mole` binary itself is broken, do the same by hand:
+
+```bash
+launchctl bootout gui/$UID/com.h3l1o5.mole-daemon 2>/dev/null
+rm -f ~/.local/bin/{mole,mole-daemon,mole-pasteboard}
+rm -f ~/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist
+rm -rf /tmp/mole-clip.sock ~/.local/state/mole/
+```
+
+### On each Linux remote
+
+```bash
+ssh <host> 'rm -f ~/.local/bin/xclip'
+```
+
 ## Usage
 
 ```bash
@@ -186,28 +211,3 @@ MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:cli
 
 See [`CLAUDE.md`](CLAUDE.md) for UI conventions, theme rules, and the
 preview-after-every-UI-change discipline.
-
-## Uninstall
-
-### On your Mac
-
-```bash
-mole uninstall            # lists files, asks to confirm
-mole uninstall --yes      # skip the prompt
-```
-
-Stops the launchd agent and removes the binaries, plist, socket, and log
-directory. If the `mole` binary itself is broken, do the same by hand:
-
-```bash
-launchctl bootout gui/$UID/com.h3l1o5.mole-daemon 2>/dev/null
-rm -f ~/.local/bin/{mole,mole-daemon,mole-pasteboard}
-rm -f ~/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist
-rm -rf /tmp/mole-clip.sock ~/.local/state/mole/
-```
-
-### On each Linux remote
-
-```bash
-ssh <host> 'rm -f ~/.local/bin/xclip'
-```
