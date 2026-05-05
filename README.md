@@ -56,20 +56,6 @@ Three data paths share one SSH connection:
 | Fallback | `/usr/bin/xclip`                               |
 | PATH     | `~/.local/bin` ahead of system directories     |
 
-Most distributions don't ship `socat` by default. mole's preflight detects
-this on first connect and prints the distro-aware install one-liner — for
-example `sudo apt install socat xclip` on Debian/Ubuntu, `sudo dnf install
-socat xclip` on RHEL/Fedora, or `sudo pacman -S socat xclip` on Arch.
-mole does not auto-run these; sudo + the system package manager are
-intentionally manual.
-
-The `xclip` shim itself lives in `~/.local/bin/` and needs no sudo.
-mole's preflight installs (or updates) the shim automatically on first
-connect after asking for confirmation. The first installation also
-appends `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` when
-missing — start a new SSH session (or `source ~/.bashrc`) so the shim
-wins over `/usr/bin/xclip`.
-
 ## Install
 
 ### On your Mac
@@ -203,10 +189,25 @@ preview-after-every-UI-change discipline.
 
 ## Uninstall
 
+### On your Mac
+
 ```bash
-mole uninstall
+mole uninstall            # lists files, asks to confirm
+mole uninstall --yes      # skip the prompt
 ```
 
-The command lists every file it will touch, asks for confirmation, then
-removes binaries, the launchd agent, the daemon socket, and the log
-directory. Use `mole uninstall --yes` to skip the prompt.
+Stops the launchd agent and removes the binaries, plist, socket, and log
+directory. If the `mole` binary itself is broken, do the same by hand:
+
+```bash
+launchctl bootout gui/$UID/com.h3l1o5.mole-daemon 2>/dev/null
+rm -f ~/.local/bin/{mole,mole-daemon,mole-pasteboard}
+rm -f ~/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist
+rm -rf /tmp/mole-clip.sock ~/.local/state/mole/
+```
+
+### On each Linux remote
+
+```bash
+ssh <host> 'rm -f ~/.local/bin/xclip'
+```
