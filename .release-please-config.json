@@ -5,6 +5,7 @@
       "package-name": "mole",
       "release-as": "0.1.0",
       "include-v-in-tag": true,
+      "include-component-in-tag": false,
       "changelog-path": "CHANGELOG.md"
     }
   }
