@@ -13,8 +13,62 @@ env:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build arm64
+        run: TARGET_ARCH=arm64 bash scripts/build.sh
+
+      - name: Verify arm64 binaries
+        run: |
+          file dist/mole dist/mole-daemon dist/mole-pasteboard
+          file dist/mole | grep -q 'arm64'
+
+      - name: Package arm64 tarball
+        run: |
+          mkdir -p artifacts
+          tar -czf artifacts/mole-darwin-arm64.tar.gz \
+            -C dist mole mole-daemon mole-pasteboard \
+            -C ../launchd com.h3l1o5.mole-daemon.plist.template
+
+      - name: Build x64
+        run: TARGET_ARCH=x64 bash scripts/build.sh
+
+      - name: Verify x64 binaries
+        run: |
+          file dist/mole dist/mole-daemon dist/mole-pasteboard
+          file dist/mole | grep -q 'x86_64'
+
+      - name: Package x64 tarball
+        run: |
+          tar -czf artifacts/mole-darwin-x64.tar.gz \
+            -C dist mole mole-daemon mole-pasteboard \
+            -C ../launchd com.h3l1o5.mole-daemon.plist.template
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.release-please.outputs.tag_name }} \
+            artifacts/mole-darwin-arm64.tar.gz \
+            artifacts/mole-darwin-x64.tar.gz
