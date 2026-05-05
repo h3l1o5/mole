@@ -19,6 +19,7 @@ import { ProfilePicker } from '../src/cli/profile-picker';
 import { ReviewStep } from '../src/cli/wizard/review';
 import { Breadcrumb } from '../src/cli/wizard/breadcrumb';
 import { WizardFrame } from '../src/cli/wizard/frame';
+import { UninstallApp } from '../src/cli/commands/uninstall';
 import type { SshHost } from '../src/lib/ssh-config';
 
 interface Case {
@@ -618,11 +619,82 @@ const wizardCases: Case[] = [
   },
 ];
 
+const stubDeps = {
+  bootout: async () => ({ code: 0, stderr: '' }),
+  socketGone: async () => true,
+  killDaemon: async () => {},
+  remove: async () => ({ ok: true }),
+  sleep: async () => {},
+} as const;
+
+const uninstallCases: Case[] = [
+  {
+    view: 'uninstall',
+    name: 'prompt',
+    run: () =>
+      snapshot(
+        <UninstallApp
+          deps={stubDeps}
+          paths={[
+            '/Users/me/.local/bin/mole',
+            '/Users/me/.local/bin/mole-daemon',
+            '/Users/me/.local/bin/mole-pasteboard',
+            '/Users/me/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist',
+            '/Users/me/.local/state/mole',
+            '/tmp/mole-clip.sock',
+          ]}
+          yes={false}
+          onExit={() => {}}
+        />,
+      ),
+  },
+  {
+    view: 'uninstall',
+    name: 'summary success',
+    run: () =>
+      snapshot(
+        <UninstallApp
+          deps={stubDeps}
+          paths={['/Users/me/.local/bin/mole', '/Users/me/.local/bin/mole-daemon']}
+          yes={true}
+          onExit={() => {}}
+        />,
+        async () => {
+          await new Promise((r) => setTimeout(r, 80));
+        },
+      ),
+  },
+  {
+    view: 'uninstall',
+    name: 'summary with failures',
+    run: () =>
+      snapshot(
+        <UninstallApp
+          deps={{
+            ...stubDeps,
+            remove: async (p) =>
+              p.endsWith('plist') ? { ok: false, error: 'EACCES' } : { ok: true },
+          }}
+          paths={[
+            '/Users/me/.local/bin/mole',
+            '/Users/me/Library/LaunchAgents/com.h3l1o5.mole-daemon.plist',
+          ]}
+          yes={true}
+          onExit={() => {}}
+        />,
+        async () => {
+          await new Promise((r) => setTimeout(r, 80));
+        },
+      ),
+  },
+];
+
 const ALL: Case[] = [
   ...preflightCases,
   ...hostPickerCases,
   ...profilePickerCases,
   ...wizardCases,
+  ...uninstallCases,
 ];
 
 const filter = process.argv[2];
