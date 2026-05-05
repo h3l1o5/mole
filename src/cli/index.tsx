@@ -11,6 +11,8 @@ import {
   runPreflightSteps,
   type PreflightRunResult,
 } from './preflight-runner';
+import pkg from '../../package.json' with { type: 'json' };
+import { parseArgs } from './parse-args';
 
 interface AppProps {
   onDone: (
@@ -66,6 +68,15 @@ const App: React.FC<AppProps> = ({ onDone }) => {
 };
 
 async function main() {
+  const args = parseArgs(process.argv.slice(2));
+
+  if (args.kind === 'version') {
+    console.log(pkg.version);
+    return;
+  }
+
+  // TODO Task 6: handle args.kind === 'uninstall'
+
   const result = await new Promise<{
     submission: WizardSubmitPayload | null;
     pre: PreflightRunResult | null;
