@@ -12,7 +12,7 @@ import { handleTextInputKey } from './wizard/text-input-keys';
 import { useExtraKeys } from './hooks/use-extra-keys';
 import type { PickerUiState } from './wizard/reducer';
 
-const PLACEHOLDER = 'Create new profile… (e.g. work-account)';
+const PLACEHOLDER = 'Create new profile… (e.g. mole-profile1)';
 
 export const statusLabel = (s: ProfileStatus): string => {
   switch (s) {
