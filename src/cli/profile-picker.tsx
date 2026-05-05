@@ -177,7 +177,9 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           Select a <Text color={colors.primary}>Chrome profile</Text> to launch.
         </Text>
         <Text dimColor>
-          Live in ~/.chrome-profiles — or create / skip below
+          {profiles.length === 0
+            ? 'No profiles yet — type a name below to create one.'
+            : 'Live in ~/.chrome-profiles — or create / skip below'}
         </Text>
       </Box>
       <Box flexDirection="column">
