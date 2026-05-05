@@ -29,6 +29,18 @@ bun run daemon:status        # PID / state
 
 **Run preview after every UI change.** `scripts/preview.tsx` is the TUI storybook — every new screen or state belongs in it. It catches marker/label alignment, empty-state copy, cross-state visual consistency, and validation-error layout that are hard to spot in the live TUI. Preview output is ANSI-stripped; review color and animation in a real terminal.
 
+**Test `install.sh` locally without releasing.** It honours `MOLE_RELEASE_URL` and `MOLE_VERSION`, so you can point it at a freshly-built tarball:
+
+```bash
+bun run build
+tar -czf /tmp/mole.tar.gz \
+  -C dist mole mole-daemon mole-pasteboard \
+  -C ../launchd com.h3l1o5.mole-daemon.plist.template
+MOLE_RELEASE_URL="file:///tmp/mole.tar.gz" MOLE_VERSION=dev bash install.sh
+```
+
+`file://` skips the progress bar (instant); use `python3 -m http.server 0` if you actually want to see it.
+
 ## UI/UX rules
 
 **No component library.** No `@inkjs/ui` or wrappers. Hand-roll on Ink. All glyphs are printable ASCII so they sit on the baseline at width 1 across every terminal font — no Unicode, no `figures` package.
