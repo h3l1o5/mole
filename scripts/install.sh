@@ -7,6 +7,7 @@ LOG_DIR="$HOME/.local/state/mole"
 LA_DIR="$HOME/Library/LaunchAgents"
 LABEL="com.h3l1o5.mole-daemon"
 PLIST="$LA_DIR/${LABEL}.plist"
+SERVICE="gui/$UID/${LABEL}"
 
 for cmd in swiftc open launchctl; do
   command -v "$cmd" >/dev/null 2>&1 || {
@@ -21,6 +22,22 @@ done
 "$ROOT/scripts/build.sh"
 
 mkdir -p "$BIN_DIR" "$LOG_DIR" "$LA_DIR"
+
+# Stop existing daemon BEFORE replacing binaries: overwriting a running
+# mach-o can yield "Text file busy" / EIO, and a half-loaded service makes
+# the next bootstrap race with launchctl error 5.
+if launchctl print "$SERVICE" >/dev/null 2>&1; then
+  echo "Stopping existing daemon..."
+  launchctl bootout "$SERVICE" 2>/dev/null || true
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    launchctl print "$SERVICE" >/dev/null 2>&1 || break
+    sleep 0.2
+  done
+  if launchctl print "$SERVICE" >/dev/null 2>&1; then
+    echo "WARNING: daemon did not unload after 3s; proceeding anyway" >&2
+  fi
+fi
+
 cp "$ROOT/dist/mole" "$BIN_DIR/mole"
 cp "$ROOT/dist/mole-daemon" "$BIN_DIR/mole-daemon"
 cp "$ROOT/dist/mole-pasteboard" "$BIN_DIR/mole-pasteboard"
@@ -35,9 +52,18 @@ sed \
   "$ROOT/launchd/${LABEL}.plist.template" > "$PLIST"
 echo "Installed plist: $PLIST"
 
-# unload if already loaded, then load
-launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST"
+BOOT_ERR="$(mktemp)"
+trap 'rm -f "$BOOT_ERR"' EXIT
+if ! launchctl bootstrap "gui/$UID" "$PLIST" 2>"$BOOT_ERR"; then
+  # Stale registration can survive bootout. One forced retry.
+  launchctl bootout "$SERVICE" 2>/dev/null || true
+  sleep 0.5
+  if ! launchctl bootstrap "gui/$UID" "$PLIST" 2>"$BOOT_ERR"; then
+    echo "ERROR: launchctl bootstrap failed:" >&2
+    cat "$BOOT_ERR" >&2 || true
+    exit 1
+  fi
+fi
 echo "Loaded launchd service: $LABEL"
 
 # health check (retry; compiled bun binary takes a few seconds on first launch)
