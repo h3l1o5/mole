@@ -215,3 +215,33 @@ describe('<ProfilePicker> keyboard wiring', () => {
     unmount();
   });
 });
+
+describe('<ProfilePicker> subhead', () => {
+  test('empty profiles → "No profiles yet" hint', () => {
+    const { lastFrame, unmount } = render(
+      <ProfilePicker
+        profiles={[]}
+        ui={makeUi({ index: 0 })}
+        onUiChange={() => {}}
+        onPick={() => {}}
+      />,
+    );
+    expect(lastFrame()).toContain('No profiles yet');
+    expect(lastFrame()).not.toContain('Live in ~/.chrome-profiles');
+    unmount();
+  });
+
+  test('non-empty profiles → original "Live in ~/.chrome-profiles" subhead', () => {
+    const { lastFrame, unmount } = render(
+      <ProfilePicker
+        profiles={[PROFILE('work', 'free')]}
+        ui={makeUi({ index: 0 })}
+        onUiChange={() => {}}
+        onPick={() => {}}
+      />,
+    );
+    expect(lastFrame()).toContain('Live in ~/.chrome-profiles');
+    expect(lastFrame()).not.toContain('No profiles yet');
+    unmount();
+  });
+});
