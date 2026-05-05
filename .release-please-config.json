@@ -1,0 +1,11 @@
+{
+  "release-type": "node",
+  "packages": {
+    ".": {
+      "package-name": "mole",
+      "release-as": "0.1.0",
+      "include-v-in-tag": true,
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
