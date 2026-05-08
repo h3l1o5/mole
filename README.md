@@ -6,6 +6,8 @@
 DevTools port into a Linux SSH session over one connection. Paste screenshots,
 drive a remote browser, and run Claude Code on the remote as if it were local.
 
+https://github.com/user-attachments/assets/5d98634e-520c-4c7f-b70a-daff27dd4783
+
 ## Features
 
 - **Last-writer-wins across multiple Macs.** The most recent SSH session
@@ -208,6 +210,3 @@ daemon and the remote shell (the `xclip` shim honours it):
 MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:daemon
 MOLE_SOCKET=/tmp/mole-clip-dev.sock bun run dev:cli
 ```
-
-See [`CLAUDE.md`](CLAUDE.md) for UI conventions, theme rules, and the
-preview-after-every-UI-change discipline.
